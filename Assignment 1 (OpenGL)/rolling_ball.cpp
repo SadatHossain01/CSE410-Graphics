@@ -68,15 +68,66 @@ void draw_triangle(Point3D a, Point3D b, Point3D c) {
   glEnd();
 }
 
+/**
+ * @brief Draw an arrow with the given properties.
+ * @param s The starting point of the arrow.
+ * @param dir The direction vector of the arrow.
+ * @param normal The normal vector of the arrow.
+ * @param len The length of the arrow.
+ * @param r The red component of the arrow color.
+ * @param g The green component of the arrow color.
+ * @param b The blue component of the arrow color.
+ *
+ * @note The normal vector is necessary to draw the arrowhead in the proper
+ * plane.
+ */
+void draw_arrow(Point3D s, Vector dir, Vector normal, double len, double r,
+                double g, double b) {
+  glColor3f(r, g, b);
+  dir = dir.normalize();
+  normal = normal.normalize();
+
+  std::vector<Point3D> points;
+  Vector right = dir.cross(normal);
+
+  const double bottom_width = 0.5;
+  const double head_width = 1.5;
+  const double head_length = 3;
+
+  // bottom quad points
+  points.push_back(s - (bottom_width / 2.0) * right);      // bottom left
+  points.push_back(points.back() + bottom_width * right);  // bottom right
+  points.push_back(points.back() + len * dir);
+  points.push_back(points.back() - bottom_width * right);
+  Point3D temp = points.back();
+  glBegin(GL_QUADS);
+  {
+    for (auto p : points) glVertex3f(p.x, p.y, p.z);
+  }
+  glEnd();
+  points.clear();
+
+  // upper arrowhead points
+  points.push_back(temp - (head_width - bottom_width) / 2.0 * right);
+  points.push_back(points.back() + head_width * right);
+  points.push_back(s + (len + head_length) * dir);  // topmost point
+  glBegin(GL_TRIANGLES);
+  {
+    for (auto p : points) glVertex3f(p.x, p.y, p.z);
+  }
+  glEnd();
+}
+
 void draw_sphere(const Ball& ball) {
+  double c1r = 1, c1g = 0.22, c1b = 0.22;
+  double c2r = 0, c2g = 1, c2b = 0.22;
+
   for (int i = 0; i < ball.stack_count; i++) {
     int k1 = i * (ball.sector_count + 1);
     int k2 = k1 + ball.sector_count + 1;
+    bool color1 = (i < ball.stack_count / 2);
     for (int j = 0; j < ball.sector_count; j++) {
-      if (j % 2)
-        glColor3f(1, 0, 0);
-      else
-        glColor3f(0, 1, 0);
+      glColor3f(color1 ? c1r : c2r, color1 ? c1g : c2g, color1 ? c1b : c2b);
       if (i != 0)
         draw_triangle(ball.vertices[k1 + j], ball.vertices[k2 + j],
                       ball.vertices[k1 + 1 + j]);
@@ -86,14 +137,9 @@ void draw_sphere(const Ball& ball) {
 
       draw_line(ball.vertices[j + k1], ball.vertices[j + k2]);
       if (i != 0) draw_line(ball.vertices[j + k1], ball.vertices[j + k1 + 1]);
+      color1 ^= 1;
     }
   }
-
-  // now draw the direction vector
-  // glColor3f(0, 0, 1);
-  // draw_line(Point3D(0, 0, 0), Point3D(10 * ball.radius * ball.dir.x,
-  //                                     10 * ball.radius * ball.dir.y,
-  //                                     10 * ball.radius * ball.dir.z));
 }
 
 void display() {
@@ -108,9 +154,13 @@ void display() {
 
   draw_checkerboard();
   glPushMatrix();
-  glTranslatef(0, 0, 5);
+  glTranslatef(ball.center.x, ball.center.y, ball.center.z);
+  glRotatef(ball.rotation_angle, ball.right.x, ball.right.y, ball.right.z);
   draw_sphere(ball);
   glPopMatrix();
+  draw_arrow(ball.center, ball.dir, ball.up, ball.radius + 3, 0, 0, 1);
+  // draw_arrow(ball.center, ball.right.cross(ball.dir), -1 * ball.dir,
+  //            ball.radius + 3, 0, 0, 1);
   glutSwapBuffers();
 }
 
@@ -151,6 +201,18 @@ void handle_keys(unsigned char key, int x, int y) {
       break;
     case 's':
       camera.move_down_same_ref();
+      break;
+    case 'i':
+      ball.go_forward();
+      break;
+    case 'k':
+      ball.go_backward();
+      break;
+    case 'j':
+      ball.rotate_dir_ccw();
+      break;
+    case 'l':
+      ball.rotate_dir_cw();
       break;
     default:
       printf("Unknown key pressed\n");

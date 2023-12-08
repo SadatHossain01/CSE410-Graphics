@@ -1,33 +1,20 @@
 #include "ball.h"
 
 #include <cmath>
+#include <iostream>
 
-Ball::Ball(double radius, int sector_count, int stack_count, Vector dir)
-    : radius(radius),
-      sector_count(sector_count),
-      stack_count(stack_count),
-      dir(dir) {
+Ball::Ball(double radius, int sector_count, int stack_count)
+    : radius(radius), sector_count(sector_count), stack_count(stack_count) {
+  angular_speed = speed * 180 / (radius * M_PI);
+  dir = Vector(1, 1, 0).normalize();
+  right = Vector(1, -1, 0).normalize();
+  up = right.cross(dir);
+  center = Point3D(0, 0, 5);
   compute_vertices();
 }
 
-void Ball::update_radius(double radius) {
-  if (radius == this->radius) return;
-  this->radius = radius;
-  compute_vertices();
-}
-
-void Ball::update_sector_count(int sector_count) {
-  if (sector_count == this->sector_count) return;
-  this->sector_count = sector_count;
-  compute_vertices();
-}
-
-void Ball::update_stack_count(int stack_count) {
-  if (stack_count == this->stack_count) return;
-  this->stack_count = stack_count;
-  compute_vertices();
-}
-
+// vertices are computed here considering the origin (0, 0, 0) as the center of
+// the ball
 void Ball::compute_vertices() {
   double stack_step = M_PI / stack_count;
   double sector_step = 2 * M_PI / sector_count;
@@ -35,10 +22,6 @@ void Ball::compute_vertices() {
     double stack_angle = M_PI / 2.0 - i * stack_step;  // range pi/2 to -pi/2
     for (int j = 0; j <= sector_count; j++) {
       double sector_angle = j * sector_step;  // range 0 to 2pi
-
-      // printf("Stack Angle: %lf, Sector Angle: %lf\n", stack_angle * 180 /
-      // M_PI,
-      //        sector_angle * 180 / M_PI);
 
       // Vertex Position
       double x = radius * cos(stack_angle) * cos(sector_angle);
@@ -49,4 +32,28 @@ void Ball::compute_vertices() {
       // printf("Vertex %d %d: (%lf, %lf, %lf)\n", i, j, x, y, z);
     }
   }
+}
+
+void Ball::go_forward() {
+  center.x += speed * dir.x;
+  center.y += speed * dir.y;
+  center.z += speed * dir.z;
+  rotation_angle += angular_speed;
+}
+
+void Ball::go_backward() {
+  center.x -= speed * dir.x;
+  center.y -= speed * dir.y;
+  center.z -= speed * dir.z;
+  rotation_angle -= angular_speed;
+}
+
+void Ball::rotate_dir_ccw() {
+  dir = dir.rotate(up, angular_speed);
+  right = right.rotate(up, angular_speed);
+}
+
+void Ball::rotate_dir_cw() {
+  dir = dir.rotate(up, -angular_speed);
+  right = right.rotate(up, -angular_speed);
 }

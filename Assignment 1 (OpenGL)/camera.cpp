@@ -5,9 +5,9 @@
 
 Camera::Camera() {
   // initialize the camera with appropriate values
-  pos = Point3D(20, 20, 20);
+  pos = Point3D(20, 20, 40);
   look =
-      Vector(-pos.x, -pos.y, -pos.y)
+      Vector(-pos.x, -pos.y, -pos.z)
           .normalize();  // so, looking at origin (which is the reference point)
   right = Vector(-5, 5, 0).normalize();
   up = right.cross(look).normalize();

@@ -9,16 +9,20 @@
 
 struct Ball {
  public:
-  double radius;
-  int sector_count;
-  int stack_count;
-  Vector dir;
+  double rotation_angle = 0;
+  const double radius;
+  const int sector_count;
+  const int stack_count;
+  const double speed = 1;
+  double angular_speed;
+  Point3D center;
+  Vector dir, right, up;
   std::vector<Point3D> vertices;
 
-  Ball(double radius = 5, int sector_count = 25, int stack_count = 25,
-       Vector dir = Vector(0, 0, 1));
-  void update_radius(double radius);
-  void update_sector_count(int sector_count);
-  void update_stack_count(int stack_count);
+  Ball(double radius = 5, int sector_count = 25, int stack_count = 25);
   void compute_vertices();
+  void go_forward();
+  void go_backward();
+  void rotate_dir_ccw();
+  void rotate_dir_cw();
 };
