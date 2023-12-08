@@ -11,6 +11,7 @@ struct Point3D {
   Point3D operator+=(const Vector& v);
   Point3D operator-(const Vector& v) const;
   Point3D operator-=(const Vector& v);
+  Point3D operator*(const double& d) const;
 };
 
 #endif

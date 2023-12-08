@@ -5,11 +5,11 @@
 
 Camera::Camera() {
   // initialize the camera with appropriate values
-  pos = Point3D(100, 100, 100);
+  pos = Point3D(20, 20, 20);
   look =
-      Vector(-100, -100, -100)
+      Vector(-pos.x, -pos.y, -pos.y)
           .normalize();  // so, looking at origin (which is the reference point)
-  right = Vector(-5, 10, -5).normalize();
+  right = Vector(-5, 5, 0).normalize();
   up = right.cross(look).normalize();
 }
 
@@ -50,3 +50,5 @@ void Camera::tilt_counterclockwise() {
   right = right.rotate(look, -rotation_speed);
   up = up.rotate(look, -rotation_speed);
 }
+void Camera::move_up_same_ref() {}
+void Camera::move_down_same_ref() {}

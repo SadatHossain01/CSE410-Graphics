@@ -6,8 +6,8 @@
 
 struct Camera {
  private:
-  double speed = 0.5;         // for movement operations
-  double rotation_speed = 1;  // in degrees
+  const double speed = 2;           // for movement operations
+  const double rotation_speed = 1;  // in degrees
  public:
   Point3D pos;
   Vector up, right, look;  // normalized vectors
@@ -27,6 +27,9 @@ struct Camera {
   void look_down();
   void tilt_clockwise();
   void tilt_counterclockwise();
+
+  void move_up_same_ref();
+  void move_down_same_ref();
 };
 
 #endif

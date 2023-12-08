@@ -23,3 +23,7 @@ Point3D Point3D::operator-=(const Vector& v) {
   z -= v.z;
   return *this;
 }
+
+Point3D Point3D::operator*(const double& d) const {
+  return Point3D(x * d, y * d, z * d);
+}
