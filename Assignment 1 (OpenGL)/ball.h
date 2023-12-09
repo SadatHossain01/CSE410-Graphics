@@ -25,4 +25,5 @@ struct Ball {
   void go_backward();
   void rotate_dir_ccw();
   void rotate_dir_cw();
+  bool does_collide_with(std::vector<Point3D> wall_vertices);
 };

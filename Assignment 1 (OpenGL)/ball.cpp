@@ -3,6 +3,8 @@
 #include <cmath>
 #include <iostream>
 
+const double EPS = 1e-6;
+
 Ball::Ball(double radius, int sector_count, int stack_count)
     : radius(radius), sector_count(sector_count), stack_count(stack_count) {
   angular_speed = speed * 180 / (radius * M_PI);
@@ -56,4 +58,33 @@ void Ball::rotate_dir_ccw() {
 void Ball::rotate_dir_cw() {
   dir = dir.rotate(up, -angular_speed);
   right = right.rotate(up, -angular_speed);
+}
+
+bool Ball::does_collide_with(std::vector<Point3D> wall_vertices) {
+  // Assumption: ball is in the xy plane
+  // iterate over the walls of the room/closed space
+  printf("Center: (%lf, %lf, %lf)\n", center.x, center.y, center.z);
+  for (int i = 0; i < wall_vertices.size() - 1; i++) {
+    Point3D a = wall_vertices[i];
+    Point3D b = wall_vertices[i + 1];
+    Point3D c =
+        a +
+        Vector(0, 0, 1);  // assuming the wall is perpendicular to the xy plane
+    std::tuple<double, double, double, double> plane_equation =
+        get_plane_equation(a, b, c);
+    double a1 = std::get<0>(plane_equation), b1 = std::get<1>(plane_equation),
+           c1 = std::get<2>(plane_equation), d1 = std::get<3>(plane_equation);
+    double numerator = fabs(a1 * center.x + b1 * center.y + c1 * center.z + d1);
+    double denominator = sqrt(a1 * a1 + b1 * b1 + c1 * c1);
+    double distance = numerator / denominator;
+
+    printf("Wall %d: (%lf, %lf, %lf) (%lf, %lf, %lf) (%lf, %lf, %lf)\n", i, a.x,
+           a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    printf("Distance: %lf\n", distance);
+    if (fabs(distance - radius) < EPS) {
+      // printf("Distance: %lf\n", distance);
+      return true;
+    }
+  }
+  return false;
 }

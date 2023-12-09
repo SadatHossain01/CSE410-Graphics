@@ -13,9 +13,21 @@
 Camera camera;
 Ball ball;
 
+// Wall Constants
+const double wall_height = 5;
+std::vector<Point3D> wall_vertices;
+
 void init() {
   glClearColor(0.0f, 0.0f, 0.0f,
                1.0f);  // Set background color to black and opaque
+
+  const double wall_width = 100;
+  wall_vertices.push_back(Point3D(-wall_width / 2.0, -wall_width / 2.0, 0));
+  wall_vertices.push_back(Point3D(-wall_width / 2.0, wall_width / 2.0, 0));
+  wall_vertices.push_back(Point3D(wall_width / 2.0, wall_width / 2.0, 0));
+  wall_vertices.push_back(Point3D(wall_width / 2.0, -wall_width / 2.0, 0));
+  wall_vertices.push_back(wall_vertices.front());  // close the wall
+
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
 
@@ -31,6 +43,23 @@ void draw_square(double a) {
     glVertex3f(a, -a, 0);
   }
   glEnd();
+}
+
+void draw_wall(double r, double g, double b) {
+  glColor3f(r, g, b);
+  for (int i = 0; i < wall_vertices.size() - 1; i++) {
+    glBegin(GL_QUADS);
+    {
+      glVertex3f(wall_vertices[i].x, wall_vertices[i].y, wall_vertices[i].z);
+      glVertex3f(wall_vertices[i + 1].x, wall_vertices[i + 1].y,
+                 wall_vertices[i + 1].z);
+      glVertex3f(wall_vertices[i + 1].x, wall_vertices[i + 1].y,
+                 wall_vertices[i + 1].z + wall_height);
+      glVertex3f(wall_vertices[i].x, wall_vertices[i].y,
+                 wall_vertices[i].z + wall_height);
+    }
+    glEnd();
+  }
 }
 
 void draw_checkerboard() {
@@ -153,6 +182,7 @@ void display() {
             camera.up.z);
 
   draw_checkerboard();
+  draw_wall(0.5, 0.5, 0.5);
   glPushMatrix();
   glTranslatef(ball.center.x, ball.center.y, ball.center.z);
   glRotatef(ball.rotation_angle, -ball.right.x, -ball.right.y, -ball.right.z);
@@ -218,6 +248,7 @@ void handle_keys(unsigned char key, int x, int y) {
       printf("Unknown key pressed\n");
       break;
   }
+  if (ball.does_collide_with(wall_vertices)) printf("Collision detected\n");
 }
 
 void handle_special_keys(int key, int x, int y) {
