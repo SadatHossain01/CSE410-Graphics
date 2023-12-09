@@ -5,7 +5,7 @@
 
 Camera::Camera() {
   // initialize the camera with appropriate values
-  pos = Point3D(20, 20, 40);
+  pos = Point3D(17, 17, 25);
   look =
       Vector(-pos.x, -pos.y, -pos.z)
           .normalize();  // so, looking at origin (which is the reference point)
@@ -50,5 +50,31 @@ void Camera::tilt_counterclockwise() {
   right = right.rotate(look, -rotation_speed);
   up = up.rotate(look, -rotation_speed);
 }
-void Camera::move_up_same_ref() {}
-void Camera::move_down_same_ref() {}
+void Camera::move_up_same_ref() {
+  double prev_dist = pos.distance(Point3D(0, 0, 0));
+  pos.z += speed;
+  double cur_dist = pos.distance(Point3D(0, 0, 0));
+  // use cosine law to find the angle between the previous and current look
+  // vector
+  double angle =
+      acos((prev_dist * prev_dist + cur_dist * cur_dist - speed * speed) /
+           (2 * prev_dist * cur_dist));
+  angle = 180 * angle / M_PI;
+  look = look.rotate(right, -angle);
+  up = up.rotate(right, -angle);
+  right = look.cross(up).normalize();
+}
+void Camera::move_down_same_ref() {
+  double prev_dist = pos.distance(Point3D(0, 0, 0));
+  pos.z -= speed;
+  double cur_dist = pos.distance(Point3D(0, 0, 0));
+  // use cosine law to find the angle between the previous and current look
+  // vector
+  double angle =
+      acos((prev_dist * prev_dist + cur_dist * cur_dist - speed * speed) /
+           (2 * prev_dist * cur_dist));
+  angle = 180 * angle / M_PI;
+  look = look.rotate(right, angle);
+  up = up.rotate(right, angle);
+  right = look.cross(up).normalize();
+}

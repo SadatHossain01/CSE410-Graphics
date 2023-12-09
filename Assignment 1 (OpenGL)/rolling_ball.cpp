@@ -155,7 +155,7 @@ void display() {
   draw_checkerboard();
   glPushMatrix();
   glTranslatef(ball.center.x, ball.center.y, ball.center.z);
-  glRotatef(ball.rotation_angle, ball.right.x, ball.right.y, ball.right.z);
+  glRotatef(ball.rotation_angle, -ball.right.x, -ball.right.y, -ball.right.z);
   draw_sphere(ball);
   glPopMatrix();
   draw_arrow(ball.center, ball.dir, ball.up, ball.radius + 3, 0, 0, 1);

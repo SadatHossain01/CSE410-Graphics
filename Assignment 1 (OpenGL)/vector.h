@@ -18,6 +18,7 @@ struct Vector {
   Vector rotate(const Vector& axis, double angle) const;  // angle in degrees
   bool check_normalized() const;
   bool check_orthogonal(const Vector& v) const;
+  double norm() const;
 };
 
 #endif
