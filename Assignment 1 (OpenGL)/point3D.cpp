@@ -34,6 +34,7 @@ double Point3D::distance(const Point3D& p) const {
   return sqrt(pow(x - p.x, 2) + pow(y - p.y, 2) + pow(z - p.z, 2));
 }
 
+// returns a tuple of (a, b, c, d) where ax + by + cz + d = 0 is the plane
 std::tuple<double, double, double, double> get_plane_equation(
     const Point3D& p1, const Point3D& p2, const Point3D& p3) {
   double a, b, c, d;

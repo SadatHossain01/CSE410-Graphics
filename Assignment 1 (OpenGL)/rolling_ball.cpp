@@ -12,21 +12,24 @@
 
 Camera camera;
 Ball ball;
+bool simulation_on = false;
 
 // Wall Constants
 const double wall_height = 5;
-std::vector<Point3D> wall_vertices;
+std::vector<Point3D> box_vertices;
 
 void init() {
   glClearColor(0.0f, 0.0f, 0.0f,
                1.0f);  // Set background color to black and opaque
 
-  const double wall_width = 100;
-  wall_vertices.push_back(Point3D(-wall_width / 2.0, -wall_width / 2.0, 0));
-  wall_vertices.push_back(Point3D(-wall_width / 2.0, wall_width / 2.0, 0));
-  wall_vertices.push_back(Point3D(wall_width / 2.0, wall_width / 2.0, 0));
-  wall_vertices.push_back(Point3D(wall_width / 2.0, -wall_width / 2.0, 0));
-  wall_vertices.push_back(wall_vertices.front());  // close the wall
+  const double wall_width = 200;
+  box_vertices.push_back(Point3D(-wall_width / 2.0, -wall_width / 2.0, 0));
+  box_vertices.push_back(Point3D(-wall_width / 2.0, wall_width / 2.0, 0));
+  box_vertices.push_back(Point3D(wall_width / 2.0, wall_width / 2.0, 0));
+  box_vertices.push_back(Point3D(wall_width / 2.0, -wall_width / 2.0, 0));
+  box_vertices.push_back(box_vertices.front());  // close the wall
+
+  ball.box_vertices = box_vertices;
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -47,16 +50,16 @@ void draw_square(double a) {
 
 void draw_wall(double r, double g, double b) {
   glColor3f(r, g, b);
-  for (int i = 0; i < wall_vertices.size() - 1; i++) {
+  for (int i = 0; i < box_vertices.size() - 1; i++) {
     glBegin(GL_QUADS);
     {
-      glVertex3f(wall_vertices[i].x, wall_vertices[i].y, wall_vertices[i].z);
-      glVertex3f(wall_vertices[i + 1].x, wall_vertices[i + 1].y,
-                 wall_vertices[i + 1].z);
-      glVertex3f(wall_vertices[i + 1].x, wall_vertices[i + 1].y,
-                 wall_vertices[i + 1].z + wall_height);
-      glVertex3f(wall_vertices[i].x, wall_vertices[i].y,
-                 wall_vertices[i].z + wall_height);
+      glVertex3f(box_vertices[i].x, box_vertices[i].y, box_vertices[i].z);
+      glVertex3f(box_vertices[i + 1].x, box_vertices[i + 1].y,
+                 box_vertices[i + 1].z);
+      glVertex3f(box_vertices[i + 1].x, box_vertices[i + 1].y,
+                 box_vertices[i + 1].z + wall_height);
+      glVertex3f(box_vertices[i].x, box_vertices[i].y,
+                 box_vertices[i].z + wall_height);
     }
     glEnd();
   }
@@ -158,14 +161,16 @@ void draw_sphere(const Ball& ball) {
     for (int j = 0; j < ball.sector_count; j++) {
       glColor3f(color1 ? c1r : c2r, color1 ? c1g : c2g, color1 ? c1b : c2b);
       if (i != 0)
-        draw_triangle(ball.vertices[k1 + j], ball.vertices[k2 + j],
-                      ball.vertices[k1 + 1 + j]);
+        draw_triangle(ball.ball_vertices[k1 + j], ball.ball_vertices[k2 + j],
+                      ball.ball_vertices[k1 + 1 + j]);
       if (i != ball.stack_count - 1)
-        draw_triangle(ball.vertices[k1 + 1 + j], ball.vertices[k2 + j],
-                      ball.vertices[k2 + 1 + j]);
+        draw_triangle(ball.ball_vertices[k1 + 1 + j],
+                      ball.ball_vertices[k2 + j],
+                      ball.ball_vertices[k2 + 1 + j]);
 
-      draw_line(ball.vertices[j + k1], ball.vertices[j + k2]);
-      if (i != 0) draw_line(ball.vertices[j + k1], ball.vertices[j + k1 + 1]);
+      draw_line(ball.ball_vertices[j + k1], ball.ball_vertices[j + k2]);
+      if (i != 0)
+        draw_line(ball.ball_vertices[j + k1], ball.ball_vertices[j + k1 + 1]);
       color1 ^= 1;
     }
   }
@@ -182,27 +187,26 @@ void display() {
             camera.up.z);
 
   draw_checkerboard();
-  draw_wall(0.5, 0.5, 0.5);
+  draw_wall(1, 0, 0);
   glPushMatrix();
   glTranslatef(ball.center.x, ball.center.y, ball.center.z);
-  glRotatef(ball.rotation_angle, -ball.right.x, -ball.right.y, -ball.right.z);
   draw_sphere(ball);
   glPopMatrix();
   draw_arrow(ball.center, ball.dir, ball.up, ball.radius + 3, 0, 0, 1);
-  // draw_arrow(ball.center, ball.right.cross(ball.dir), -1 * ball.dir,
-  //            ball.radius + 3, 0, 0, 1);
   glutSwapBuffers();
 }
 
+void handle_simulation(int value) {
+  if (!simulation_on) return;
+  ball.go_forward();
+  glutTimerFunc(ball.dt, handle_simulation, 0);
+}
+
+void handle_collision(int value) {}
+
 void idle() {
-  // printf("Camera position: (%lf, %lf, %lf)\n", camera.pos.x, camera.pos.y,
-  //        camera.pos.z);
-  // printf("Camera look: (%lf, %lf, %lf)\n", camera.look.x, camera.look.y,
-  //        camera.look.z);
-  // printf("Camera up: (%lf, %lf, %lf)\n", camera.up.x, camera.up.y,
-  // camera.up.z); printf("Camera right: (%lf, %lf, %lf)\n", camera.right.x,
-  // camera.right.y,
-  //        camera.right.z);
+  // printf("Camera: (%lf, %lf, %lf)\n", camera.pos.x, camera.pos.y,
+  // camera.pos.z);
   glutPostRedisplay();
 }
 
@@ -244,11 +248,14 @@ void handle_keys(unsigned char key, int x, int y) {
     case 'l':
       ball.rotate_dir_cw();
       break;
+    case ' ':
+      simulation_on ^= 1;
+      if (simulation_on) glutTimerFunc(ball.dt, handle_simulation, 0);
+      break;
     default:
       printf("Unknown key pressed\n");
       break;
   }
-  if (ball.does_collide_with(wall_vertices)) printf("Collision detected\n");
 }
 
 void handle_special_keys(int key, int x, int y) {

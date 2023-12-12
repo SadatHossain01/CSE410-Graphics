@@ -75,7 +75,6 @@ Vector Vector::rotate(const Vector& axis, double angle) const {
   Vector v3 = k * k.dot(*this) * (1 - cos(theta));
   Vector v4 = v1 + v2 + v3;
   assert(fabs(norm() - v4.norm()) < EPS);
-  assert(v4.check_normalized());
   return v4;
 }
 

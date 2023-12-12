@@ -5,7 +5,7 @@
 
 Camera::Camera() {
   // initialize the camera with appropriate values
-  pos = Point3D(17, 17, 25);
+  pos = Point3D(17, 17, 50);
   look =
       Vector(-pos.x, -pos.y, -pos.z)
           .normalize();  // so, looking at origin (which is the reference point)
