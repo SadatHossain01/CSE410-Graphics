@@ -4,6 +4,10 @@
 
 Point3D::Point3D(double x, double y, double z) : x(x), y(y), z(z) {}
 
+Point3D Point3D::operator+(const Point3D& p) const {
+  return Point3D(x + p.x, y + p.y, z + p.z);
+}
+
 Point3D Point3D::operator+(const Vector& v) const {
   return Point3D(x + v.x, y + v.y, z + v.z);
 }

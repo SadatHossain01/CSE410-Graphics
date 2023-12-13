@@ -14,15 +14,18 @@ Camera camera;
 Ball ball;
 bool simulation_on = false;
 
+const double EPS = 1e-6;
+
 // Wall Constants
 const double wall_height = 5;
+const double wall_thickness = 2;
+const double wall_width = 100;
 std::vector<Point3D> box_vertices;
 
 void init() {
   glClearColor(0.0f, 0.0f, 0.0f,
                1.0f);  // Set background color to black and opaque
 
-  const double wall_width = 200;
   box_vertices.push_back(Point3D(-wall_width / 2.0, -wall_width / 2.0, 0));
   box_vertices.push_back(Point3D(-wall_width / 2.0, wall_width / 2.0, 0));
   box_vertices.push_back(Point3D(wall_width / 2.0, wall_width / 2.0, 0));
@@ -48,20 +51,41 @@ void draw_square(double a) {
   glEnd();
 }
 
-void draw_wall(double r, double g, double b) {
+// the points are in ccw order
+void draw_wall(const Point3D& a, const Point3D& b, const Point3D& c,
+               const Point3D& d) {
+  glBegin(GL_QUADS);
+  {
+    glVertex3f(a.x, a.y, a.z);
+    glVertex3f(b.x, b.y, b.z);
+    glVertex3f(c.x, c.y, c.z);
+    glVertex3f(d.x, d.y, d.z);
+  }
+  glEnd();
+}
+
+void draw_box(double r, double g, double b) {
   glColor3f(r, g, b);
   for (int i = 0; i < box_vertices.size() - 1; i++) {
-    glBegin(GL_QUADS);
-    {
-      glVertex3f(box_vertices[i].x, box_vertices[i].y, box_vertices[i].z);
-      glVertex3f(box_vertices[i + 1].x, box_vertices[i + 1].y,
-                 box_vertices[i + 1].z);
-      glVertex3f(box_vertices[i + 1].x, box_vertices[i + 1].y,
-                 box_vertices[i + 1].z + wall_height);
-      glVertex3f(box_vertices[i].x, box_vertices[i].y,
-                 box_vertices[i].z + wall_height);
-    }
-    glEnd();
+    Point3D a, b;  // another set of points for the outer layer)
+    a = box_vertices[i], b = box_vertices[i + 1];
+    a.x += (a.x > 0 ? 1 : -1) * wall_thickness;
+    a.y += (a.y > 0 ? 1 : -1) * wall_thickness;
+    b.x += (b.x > 0 ? 1 : -1) * wall_thickness;
+    b.y += (b.y > 0 ? 1 : -1) * wall_thickness;
+    draw_wall(box_vertices[i], box_vertices[i + 1],
+              box_vertices[i + 1] + Point3D(0, 0, wall_height),
+              box_vertices[i] + Point3D(0, 0, wall_height));
+    draw_wall(a, b, b + Point3D(0, 0, wall_height),
+              a + Point3D(0, 0, wall_height));
+    draw_wall(box_vertices[i], a, a + Point3D(0, 0, wall_height),
+              box_vertices[i] + Point3D(0, 0, wall_height));
+    draw_wall(box_vertices[i + 1], b, b + Point3D(0, 0, wall_height),
+              box_vertices[i + 1] + Point3D(0, 0, wall_height));
+    draw_wall(box_vertices[i], box_vertices[i + 1], b, a);
+    draw_wall(box_vertices[i] + Point3D(0, 0, wall_height),
+              box_vertices[i + 1] + Point3D(0, 0, wall_height),
+              b + Point3D(0, 0, wall_height), a + Point3D(0, 0, wall_height));
   }
 }
 
@@ -187,7 +211,7 @@ void display() {
             camera.up.z);
 
   draw_checkerboard();
-  draw_wall(1, 0, 0);
+  draw_box(1, 0, 0);
   glPushMatrix();
   glTranslatef(ball.center.x, ball.center.y, ball.center.z);
   draw_sphere(ball);
@@ -198,11 +222,38 @@ void display() {
 
 void handle_simulation(int value) {
   if (!simulation_on) return;
-  ball.go_forward();
-  glutTimerFunc(ball.dt, handle_simulation, 0);
+  if (value == 1) {
+    // typical ball movement
+    ball.center += ball.dir_scalar_multiplier * ball.dir;
+    double angle = 360 * (ball.dir.norm() * ball.dir_scalar_multiplier) /
+                   (2 * M_PI * ball.radius);
+    ball.rotate_ball_vertices(ball.right, -angle);
+  } else if (value == 2) {
+    // collision handling
+    int collision_type = ball.will_collision_occur();
+    // if no collision, -1 was returned
+    if (collision_type == 1) {
+      // wall parallel to y axis
+      ball.dir.x *= -1;
+      ball.right = ball.dir.rotate(ball.up, -90);
+    } else if (collision_type == 2) {
+      // wall parallel to x axis
+      ball.dir.y *= -1;
+      ball.right = ball.dir.rotate(ball.up, -90);
+    } else if (collision_type == 3) {
+      // corner collision
+      ball.dir.x *= -1;
+      ball.dir.y *= -1;
+      ball.right = ball.dir.rotate(ball.up, -90);
+    }
+  }
+  double time = ball.next_collision_time();
+  // printf("Value: %d, Time: %lf\n", value, time);
+  if (time < ball.dt - EPS)
+    glutTimerFunc(time, handle_simulation, 2);
+  else
+    glutTimerFunc(ball.dt, handle_simulation, 1);
 }
-
-void handle_collision(int value) {}
 
 void idle() {
   // printf("Camera: (%lf, %lf, %lf)\n", camera.pos.x, camera.pos.y,
@@ -237,20 +288,34 @@ void handle_keys(unsigned char key, int x, int y) {
       camera.move_down_same_ref();
       break;
     case 'i':
-      ball.go_forward();
+      if (!simulation_on) ball.go_forward();
       break;
     case 'k':
-      ball.go_backward();
+      if (!simulation_on) ball.go_backward();
       break;
     case 'j':
       ball.rotate_dir_ccw();
+      if (simulation_on) {
+        double time = ball.next_collision_time();
+        if (time < ball.dt - EPS) glutTimerFunc(time, handle_simulation, 2);
+      }
       break;
     case 'l':
       ball.rotate_dir_cw();
+      if (simulation_on) {
+        double time = ball.next_collision_time();
+        if (time < ball.dt - EPS) glutTimerFunc(time, handle_simulation, 2);
+      }
       break;
     case ' ':
       simulation_on ^= 1;
-      if (simulation_on) glutTimerFunc(ball.dt, handle_simulation, 0);
+      if (simulation_on) {
+        double time = ball.next_collision_time();
+        if (time < ball.dt - EPS)
+          glutTimerFunc(time, handle_simulation, 2);
+        else
+          glutTimerFunc(ball.dt, handle_simulation, 1);
+      }
       break;
     default:
       printf("Unknown key pressed\n");

@@ -15,7 +15,7 @@ struct Ball {
   const int sector_count;
   const int stack_count;
   const double dir_scalar_multiplier = 1;
-  const double dt = 50;           // ms
+  const double dt = 20;           // ms
   double dir_rotation_angle = 1;  // in degrees
   std::vector<Point3D> ball_vertices;
   std::vector<Point3D> box_vertices;
@@ -34,4 +34,8 @@ struct Ball {
   double get_distance_from_wall(int wall_idx);
   std::vector<std::pair<int, double>>
   get_collision_distances();  // returns vector of <wall_index, distance>
+  int will_collision_occur();
+  int get_facing_wall_idx();  // returns which wall the ball is going to hit if
+                              // uninterrupted
+  double next_collision_time();
 };

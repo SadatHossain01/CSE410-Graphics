@@ -1,8 +1,8 @@
 #include "ball.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
-#include <iostream>
 
 const double EPS = 1e-6;
 const double INF = 1e9;
@@ -10,15 +10,14 @@ const double INF = 1e9;
 Ball::Ball(double radius, int sector_count, int stack_count)
     : radius(radius), sector_count(sector_count), stack_count(stack_count) {
   dir_rotation_angle = dir_scalar_multiplier * 180 / (radius * M_PI);
-  dir = Vector(1, 1, 0).normalize();
-  right = Vector(1, -1, 0).normalize();
-  up = right.cross(dir);
+  dir = Vector(1, 0, 0).normalize();
+  up = Vector(0, 0, 1).normalize();
+  right = dir.cross(up);
   center = Point3D(0, 0, 5);
   compute_vertices();
 }
 
-// vertices are computed here considering the origin (0, 0, 0) as the center of
-// the ball
+// Vertices are computed here considering the origin (0, 0, 0) as the center
 void Ball::compute_vertices() {
   double stack_step = M_PI / stack_count;
   double sector_step = 2 * M_PI / sector_count;
@@ -50,20 +49,16 @@ void Ball::go_forward() {
     // collision will happen
     std::vector<std::pair<int, double>> collision_distances =
         get_collision_distances();
+    std::sort(
+        collision_distances.begin(), collision_distances.end(),
+        [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+          return a.second < b.second;
+        });
     double dist_to_collision = collision_distances[0].second;
-    // printf("Collision distances:\n");
-    // for (int i = 0; i < collision_distances.size(); i++) {
-    //   printf("Wall %d: %lf\n", collision_distances[i].first,
-    //          collision_distances[i].second);
-    // }
 
     // first reach to wall
-    center += std::min(1.00, dist_to_collision / usual_dist_change) *
-              dir_scalar_multiplier * dir;
-
-    // testing
-    double now_dist = get_distance_from_wall(collision_distances[0].first);
-    printf("Now dist: %lf\n", now_dist);
+    center +=
+        (dist_to_collision / usual_dist_change) * dir_scalar_multiplier * dir;
 
     double angle = 360 * dist_to_collision / (2 * M_PI * radius);
     rotate_ball_vertices(right, -angle);
@@ -73,50 +68,38 @@ void Ball::go_forward() {
     if (fabs(collision_distances[0].second - collision_distances[1].second) <
         EPS) {
       // corner collision
-      printf("Corner collision\n");
       dir.x *= -1;
       dir.y *= -1;
-      right.x *= -1;
-      right.y *= -1;
-      up = right.cross(dir);
+      right = dir.rotate(up, -90);
     } else {
       int wall_idx = collision_distances[0].first;
       if (fabs(box_vertices[wall_idx].x - box_vertices[wall_idx + 1].x) < EPS) {
         // wall parallel to y-axis
-        printf("Wall parallel to y-axis\n");
         dir.x *= -1;
-        right.x *= -1;
-        up = right.cross(dir);
+        right = dir.rotate(up, -90);
       } else {
         // wall parallel to x-axis
-        printf("Wall parallel to x-axis\n");
         dir.y *= -1;
-        right.y *= -1;
-        up = right.cross(dir);
+        right = dir.rotate(up, -90);
       }
     }
 
     // now the remaining movement and collision should be done
     // fraction for the remaining movement
-    printf("Usual Dist Change: %lf, Dist to collision: %lf\n",
-           usual_dist_change, dist_to_collision);
     double fraction =
         fabs(usual_dist_change - dist_to_collision) / usual_dist_change;
     center += fraction * dir_scalar_multiplier * dir;
     angle = 360 * fraction * usual_dist_change / (2 * M_PI * radius);
     rotate_ball_vertices(right, -angle);
-    printf("Done with collision\n");
   }
 }
 
 void Ball::go_backward() {
   dir = dir * -1;
-  right = right * -1;
-  up = right.cross(dir);
+  right = dir.rotate(up, -90);
   go_forward();
   dir = dir * -1;
-  right = right * -1;
-  up = right.cross(dir);
+  right = dir.rotate(up, -90);
 }
 
 bool Ball::is_ball_inside_box(Point3D c, double rad,
@@ -158,11 +141,11 @@ void Ball::rotate_dir_cw() {
 }
 
 /*
-Assumption:
+Assumptions:
 1. The walls of the box are aligned to the x and y axes
 2. As a result of 1, there will only be 4 walls
 */
-
+// Does not return sorted vector
 std::vector<std::pair<int, double>> Ball::get_collision_distances() {
   std::vector<std::pair<int, double>>
       collision_distances;  // <wall_index, distance>
@@ -170,59 +153,127 @@ std::vector<std::pair<int, double>> Ball::get_collision_distances() {
     double dist = get_distance_from_wall(i);
     collision_distances.push_back(std::make_pair(i, dist));
   }
+  return collision_distances;
+}
+
+// Returns the distance that the ball would be able to travel along the dir
+// vector before collision
+double Ball::get_distance_from_wall(int wall_idx) {
+  Point3D p1 = box_vertices[wall_idx];
+  Point3D p2 = box_vertices[wall_idx + 1];
+
+  double distance_till_collision;
+
+  // the straight line connecting center and the direction vector of the ball
+  // will be: dir.y * x - dir.x * y = dir.y * center.x - dir.x * center.y
+
+  /*
+  Point a: the point at which the line perpendicular to the plane passing
+  through the center would intersect the plane
+  Point b: the point at which the line along the direction vector passing
+  through the center would intersect the plane
+  */
+  if (fabs(p1.x - p2.x) < EPS) {  // wall parallel to y-axis
+    double a_to_center_distance = fabs(p1.x - center.x);
+    double y_coordinate_of_b =
+        (dir.y * center.x - dir.x * center.y - dir.y * p1.x) / (-dir.x);
+    double a_to_b_distance = fabs(y_coordinate_of_b - center.y);
+    double center_to_wall_distance =
+        sqrt(a_to_center_distance * a_to_center_distance +
+             a_to_b_distance * a_to_b_distance);
+    double distance_at_collision_moment =
+        (center_to_wall_distance * radius) / a_to_center_distance;
+    distance_till_collision =
+        center_to_wall_distance - distance_at_collision_moment;
+  } else {  // wall parallel to x-axis
+    double a_to_center_distance = fabs(p1.y - center.y);
+    double x_coordinate_of_b =
+        (dir.y * center.x - dir.x * center.y + dir.x * p1.y) / (dir.y);
+    double a_to_b_distance = fabs(x_coordinate_of_b - center.x);
+    double center_to_wall_distance =
+        sqrt(a_to_center_distance * a_to_center_distance +
+             a_to_b_distance * a_to_b_distance);
+    double distance_at_collision_moment =
+        (center_to_wall_distance * radius) / a_to_center_distance;
+    distance_till_collision =
+        center_to_wall_distance - distance_at_collision_moment;
+  }
+  /*
+  center_to_wall_distance is the distance from the ball's center to the wall
+  along the direction vector. However, the ball would not be able to go
+  uninterrupted to that distance because the collision would take place even
+  before. So how much distance along that direction will the ball be able to go?
+  It will be able to go as much as the perpendicular distance from the ball's
+  center to the wall is equal to the radius. But both the triangles are similar.
+  So, we can use the ratio to find out that till-collision-distance.
+  */
+  return distance_till_collision;
+}
+
+/*
+Return values:
+-1: no collision
+1: collision with wall parallel to y-axis
+2: collision with wall parallel to x-axis
+3: corner collision
+*/
+int Ball::will_collision_occur() {
+  Point3D temp = center + dir_scalar_multiplier * dir;
+  if (is_ball_inside_box(temp, radius, box_vertices)) return -1;
+  std::vector<std::pair<int, double>> collision_distances =
+      get_collision_distances();
   std::sort(
       collision_distances.begin(), collision_distances.end(),
       [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
         return a.second < b.second;
       });
-  return collision_distances;
+  if (fabs(collision_distances[0].second - collision_distances[1].second) < EPS)
+    // corner collision
+    return 3;
+  else {
+    int wall_idx = collision_distances[0].first;
+    if (fabs(box_vertices[wall_idx].x - box_vertices[wall_idx + 1].x) < EPS)
+      // wall parallel to y-axis
+      return 1;
+    else
+      // wall parallel to x-axis
+      return 2;
+  }
 }
 
-// this function returns the distance from the ball to the wall along the
-// direction vector of the ball
-double Ball::get_distance_from_wall(int wall_idx) {
-  Point3D p1 = box_vertices[wall_idx];
-  Point3D p2 = box_vertices[wall_idx + 1];
+int Ball::get_facing_wall_idx() {
+  // The direction vector passes through the center of the ball
+  // so the points passed by the current trajectory will be:
+  // x = center.x + dir.x * t
+  // y = center.y + dir.y * t
 
-  double center_to_wall_distance;
-
-  // the straight line connecting center and the direction vector of the ball
-  // will be: dir.y * x - dir.x * y = dir.y * center.x - dir.x * center.y
-  printf("Line Equation: %lfx - %lfy = %lf\n", dir.y, dir.x,
-         dir.y * center.x - dir.x * center.y);
-  if (fabs(p1.x - p2.x) < EPS) {  // wall parallel to y-axis
-    double perp_distance_ball_center = fabs(p1.x - center.x);
-    double y_collision_point =
-        (dir.y * center.x - dir.x * center.y - dir.y * p1.x) / (-dir.x);
-    double dist_perp_point_collision_point = fabs(y_collision_point - center.y);
-    center_to_wall_distance =
-        sqrt(perp_distance_ball_center * perp_distance_ball_center +
-             dist_perp_point_collision_point * dist_perp_point_collision_point);
-    printf(
-        "Perp. distance: %lf, Perp. point to collision point distance: %lf\n, "
-        "Center to wall distance: "
-        "%lf\n",
-        perp_distance_ball_center, dist_perp_point_collision_point,
-        center_to_wall_distance);
-  } else {  // wall parallel to x-axis
-    double perp_distance_ball_center = fabs(p1.y - center.y);
-    double x_collision_point =
-        (dir.y * center.x - dir.x * center.y + dir.x * p1.y) / (dir.y);
-    double dist_perp_point_collision_point = fabs(x_collision_point - center.x);
-    center_to_wall_distance =
-        sqrt(perp_distance_ball_center * perp_distance_ball_center +
-             dist_perp_point_collision_point * dist_perp_point_collision_point);
-    printf(
-        "Perp. distance: %lf, Perp. point to collision point distance: %lf\n, "
-        "Center to wall distance: "
-        "%lf\n",
-        perp_distance_ball_center, dist_perp_point_collision_point,
-        center_to_wall_distance);
+  for (int i = 0; i < box_vertices.size() - 1; i++) {
+    Point3D p1 = box_vertices[i];
+    Point3D p2 = box_vertices[i + 1];
+    if (fabs(p1.x - p2.x) < EPS) {  // wall parallel to y-axis
+      // the wall's equation will be, x = p1.x
+      double t = (p1.x - center.x) / dir.x;
+      if (t < -EPS) continue;
+      double y = center.y + dir.y * t;
+      if (y >= std::min(p1.y, p2.y) - EPS && y <= std::max(p1.y, p2.y) + EPS)
+        return i;
+    } else {  // wall parallel to x-axis
+      // the wall's equation will be, y = p1.y
+      double t = (p1.y - center.y) / dir.y;
+      if (t < -EPS) continue;
+      double x = center.x + dir.x * t;
+      if (x >= std::min(p1.x, p2.x) - EPS && x <= std::max(p1.x, p2.x) + EPS)
+        return i;
+    }
   }
-  printf(
-      "Wall p1: (%lf, %lf, %lf), p2: (%lf, %lf, %lf), center: (%lf, %lf, "
-      "%lf), distance: %lf\n",
-      p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, center.x, center.y, center.z,
-      center_to_wall_distance);
-  return center_to_wall_distance - radius;
+
+  assert(false);  // should never reach here
+  return -1;
+}
+
+double Ball::next_collision_time() {
+  int facing_wall_idx = get_facing_wall_idx();
+  double dist = get_distance_from_wall(facing_wall_idx);
+  double time = dist / ((dir_scalar_multiplier * dir.norm()) / dt);  // in ms
+  return time;
 }
