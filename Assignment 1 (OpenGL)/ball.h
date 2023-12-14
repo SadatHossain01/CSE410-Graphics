@@ -20,7 +20,7 @@ struct Ball {
   std::vector<Point3D> ball_vertices;
   std::vector<Point3D> box_vertices;
 
-  Ball(double radius = 5, int sector_count = 25, int stack_count = 25);
+  Ball(double radius = 5, int sector_count = 24, int stack_count = 24);
   void compute_vertices();
   void go_forward();
   void go_backward();
@@ -34,7 +34,7 @@ struct Ball {
   double get_distance_from_wall(int wall_idx);
   std::vector<std::pair<int, double>>
   get_collision_distances();  // returns vector of <wall_index, distance>
-  int will_collision_occur();
+  int get_collision_type();
   int get_facing_wall_idx();  // returns which wall the ball is going to hit if
                               // uninterrupted
   double next_collision_time();

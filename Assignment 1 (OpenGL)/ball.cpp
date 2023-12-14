@@ -4,13 +4,13 @@
 #include <cassert>
 #include <cmath>
 
-const double EPS = 1e-6;
 const double INF = 1e9;
+const double EPS = 1e-6;
 
 Ball::Ball(double radius, int sector_count, int stack_count)
     : radius(radius), sector_count(sector_count), stack_count(stack_count) {
   dir_rotation_angle = dir_scalar_multiplier * 180 / (radius * M_PI);
-  dir = Vector(1, 0, 0).normalize();
+  dir = Vector(1, 1, 0).normalize();
   up = Vector(0, 0, 1).normalize();
   right = dir.cross(up);
   center = Point3D(0, 0, 5);
@@ -66,13 +66,13 @@ void Ball::go_forward() {
     // now collision has taken place
     // update the direction vectors after collision
     if (fabs(collision_distances[0].second - collision_distances[1].second) <
-        EPS) {
+        0.5) {
       // corner collision
       dir.x *= -1;
       dir.y *= -1;
       right = dir.rotate(up, -90);
     } else {
-      int wall_idx = collision_distances[0].first;
+      int wall_idx = get_facing_wall_idx();
       if (fabs(box_vertices[wall_idx].x - box_vertices[wall_idx + 1].x) < EPS) {
         // wall parallel to y-axis
         dir.x *= -1;
@@ -207,7 +207,7 @@ double Ball::get_distance_from_wall(int wall_idx) {
   center to the wall is equal to the radius. But both the triangles are similar.
   So, we can use the ratio to find out that till-collision-distance.
   */
-  return distance_till_collision;
+  return std::max(0.0, distance_till_collision);
 }
 
 /*
@@ -217,7 +217,7 @@ Return values:
 2: collision with wall parallel to x-axis
 3: corner collision
 */
-int Ball::will_collision_occur() {
+int Ball::get_collision_type() {
   Point3D temp = center + dir_scalar_multiplier * dir;
   if (is_ball_inside_box(temp, radius, box_vertices)) return -1;
   std::vector<std::pair<int, double>> collision_distances =
@@ -227,11 +227,10 @@ int Ball::will_collision_occur() {
       [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
         return a.second < b.second;
       });
-  if (fabs(collision_distances[0].second - collision_distances[1].second) < EPS)
-    // corner collision
-    return 3;
+  if (fabs(collision_distances[0].second - collision_distances[1].second) < 0.5)
+    return 3;  // corner collision
   else {
-    int wall_idx = collision_distances[0].first;
+    int wall_idx = get_facing_wall_idx();
     if (fabs(box_vertices[wall_idx].x - box_vertices[wall_idx + 1].x) < EPS)
       // wall parallel to y-axis
       return 1;

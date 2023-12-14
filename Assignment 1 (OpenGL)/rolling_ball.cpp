@@ -199,7 +199,7 @@ void draw_sphere(const Ball& ball) {
     }
   }
 }
-
+unsigned int up_counter = 0;
 void display() {
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -210,12 +210,24 @@ void display() {
             camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
             camera.up.z);
 
+  // draw the 3 axes
+  // glColor3f(1, 0, 0);
+  // draw_line(Point3D(0, 0, 0), Point3D(100, 0, 0));
+  // glColor3f(0, 1, 0);
+  // draw_line(Point3D(0, 0, 0), Point3D(0, 100, 0));
+  // glColor3f(0, 0, 1);
+  // draw_line(Point3D(0, 0, 0), Point3D(0, 0, 100));
+
   draw_checkerboard();
   draw_box(1, 0, 0);
   glPushMatrix();
   glTranslatef(ball.center.x, ball.center.y, ball.center.z);
   draw_sphere(ball);
   glPopMatrix();
+  if (up_counter < 7000)
+    draw_arrow(ball.center, ball.up, -1 * ball.dir, ball.radius + 6, 1, 0.5, 0);
+  up_counter++;
+  if (up_counter == 14000) up_counter = 0;
   draw_arrow(ball.center, ball.dir, ball.up, ball.radius + 3, 0, 0, 1);
   glutSwapBuffers();
 }
@@ -230,7 +242,8 @@ void handle_simulation(int value) {
     ball.rotate_ball_vertices(ball.right, -angle);
   } else if (value == 2) {
     // collision handling
-    int collision_type = ball.will_collision_occur();
+    int collision_type = ball.get_collision_type();
+    // printf("Collision type: %d\n", collision_type);
     // if no collision, -1 was returned
     if (collision_type == 1) {
       // wall parallel to y axis
@@ -248,8 +261,10 @@ void handle_simulation(int value) {
     }
   }
   double time = ball.next_collision_time();
-  // printf("Value: %d, Time: %lf\n", value, time);
-  if (time < ball.dt - EPS)
+  // int idx = ball.get_facing_wall_idx();
+  // double dist = ball.get_distance_from_wall(idx);
+  // printf("Time: %lf, Distance: %lf, Wall: %d\n", time, dist, idx);
+  if (time <= ball.dt + EPS)
     glutTimerFunc(time, handle_simulation, 2);
   else
     glutTimerFunc(ball.dt, handle_simulation, 1);
@@ -297,21 +312,21 @@ void handle_keys(unsigned char key, int x, int y) {
       ball.rotate_dir_ccw();
       if (simulation_on) {
         double time = ball.next_collision_time();
-        if (time < ball.dt - EPS) glutTimerFunc(time, handle_simulation, 2);
+        if (time <= ball.dt + EPS) glutTimerFunc(time, handle_simulation, 2);
       }
       break;
     case 'l':
       ball.rotate_dir_cw();
       if (simulation_on) {
         double time = ball.next_collision_time();
-        if (time < ball.dt - EPS) glutTimerFunc(time, handle_simulation, 2);
+        if (time <= ball.dt + EPS) glutTimerFunc(time, handle_simulation, 2);
       }
       break;
     case ' ':
       simulation_on ^= 1;
       if (simulation_on) {
         double time = ball.next_collision_time();
-        if (time < ball.dt - EPS)
+        if (time <= ball.dt + EPS)
           glutTimerFunc(time, handle_simulation, 2);
         else
           glutTimerFunc(ball.dt, handle_simulation, 1);
