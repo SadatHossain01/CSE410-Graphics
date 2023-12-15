@@ -22,6 +22,25 @@ const double wall_thickness = 2;
 const double wall_width = 100;
 std::vector<Point3D> box_vertices;
 
+// Function Declarations
+void init();
+void draw_square(double a);
+void draw_wall(const Point3D& a, const Point3D& b, const Point3D& c,
+               const Point3D& d);
+void draw_box(double r, double g, double b);
+void draw_checkerboard();
+void draw_line(const Point3D& a, const Point3D& b);
+void draw_triangle(const Point3D& a, const Point3D& b, const Point3D& c);
+void draw_arrow(const Point3D& s, const Vector& dir, const Vector& normal,
+                double len);
+void draw_sphere(double radius, int stack_count, int sector_count,
+                 const std::vector<Point3D>& points);
+void display();
+void idle();
+void handle_simulation(int value);
+void handle_keys(unsigned char key, int x, int y);
+void handle_special_keys(int key, int x, int y);
+
 void init() {
   glClearColor(0.0f, 0.0f, 0.0f,
                1.0f);  // Set background color to black and opaque
@@ -96,16 +115,18 @@ void draw_checkerboard() {
   for (int i = -divisions; i < divisions; i++) {
     for (int j = -divisions; j < divisions; j++) {
       glPushMatrix();
-      glTranslatef(i * size, j * size, 0);
-      bool is_white = (i + j) % 2 == 0;
-      glColor3f(is_white, is_white, is_white);
-      draw_square(size / 2);
+      {
+        glTranslatef(i * size, j * size, 0);
+        bool is_white = (i + j) % 2 == 0;
+        glColor3f(is_white, is_white, is_white);
+        draw_square(size / 2);
+      }
       glPopMatrix();
     }
   }
 }
 
-void draw_line(Point3D a, Point3D b) {
+void draw_line(const Point3D& a, const Point3D& b) {
   glBegin(GL_LINES);
   {
     glVertex3f(a.x, a.y, a.z);
@@ -114,7 +135,7 @@ void draw_line(Point3D a, Point3D b) {
   glEnd();
 }
 
-void draw_triangle(Point3D a, Point3D b, Point3D c) {
+void draw_triangle(const Point3D& a, const Point3D& b, const Point3D& c) {
   glBegin(GL_TRIANGLES);
   {
     glVertex3f(a.x, a.y, a.z);
@@ -137,14 +158,13 @@ void draw_triangle(Point3D a, Point3D b, Point3D c) {
  * @note The normal vector is necessary to draw the arrowhead in the proper
  * plane.
  */
-void draw_arrow(Point3D s, Vector dir, Vector normal, double len, double r,
-                double g, double b) {
-  glColor3f(r, g, b);
-  dir = dir.normalize();
-  normal = normal.normalize();
+void draw_arrow(const Point3D& s, const Vector& dir, const Vector& normal,
+                double len) {
+  Vector new_dir = dir.normalize();
+  Vector new_normal = normal.normalize();
 
   std::vector<Point3D> points;
-  Vector right = dir.cross(normal);
+  Vector right = new_dir.cross(new_normal);
 
   const double bottom_width = 0.5;
   const double head_width = 1.5;
@@ -153,7 +173,7 @@ void draw_arrow(Point3D s, Vector dir, Vector normal, double len, double r,
   // bottom quad points
   points.push_back(s - (bottom_width / 2.0) * right);      // bottom left
   points.push_back(points.back() + bottom_width * right);  // bottom right
-  points.push_back(points.back() + len * dir);
+  points.push_back(points.back() + len * new_dir);
   points.push_back(points.back() - bottom_width * right);
   Point3D temp = points.back();
   glBegin(GL_QUADS);
@@ -174,31 +194,29 @@ void draw_arrow(Point3D s, Vector dir, Vector normal, double len, double r,
   glEnd();
 }
 
-void draw_sphere(const Ball& ball) {
+void draw_sphere(double radius, int stack_count, int sector_count,
+                 const std::vector<Point3D>& points) {
   double c1r = 1, c1g = 0.22, c1b = 0.22;
   double c2r = 0, c2g = 1, c2b = 0.22;
 
-  for (int i = 0; i < ball.stack_count; i++) {
-    int k1 = i * (ball.sector_count + 1);
-    int k2 = k1 + ball.sector_count + 1;
-    bool color1 = (i < ball.stack_count / 2);
-    for (int j = 0; j < ball.sector_count; j++) {
+  for (int i = 0; i < stack_count; i++) {
+    int k1 = i * (sector_count + 1);
+    int k2 = k1 + sector_count + 1;
+    bool color1 = (i < stack_count / 2);
+    for (int j = 0; j < sector_count; j++) {
       glColor3f(color1 ? c1r : c2r, color1 ? c1g : c2g, color1 ? c1b : c2b);
       if (i != 0)
-        draw_triangle(ball.ball_vertices[k1 + j], ball.ball_vertices[k2 + j],
-                      ball.ball_vertices[k1 + 1 + j]);
-      if (i != ball.stack_count - 1)
-        draw_triangle(ball.ball_vertices[k1 + 1 + j],
-                      ball.ball_vertices[k2 + j],
-                      ball.ball_vertices[k2 + 1 + j]);
+        draw_triangle(points[k1 + j], points[k2 + j], points[k1 + 1 + j]);
+      if (i != stack_count - 1)
+        draw_triangle(points[k1 + 1 + j], points[k2 + j], points[k2 + 1 + j]);
 
-      draw_line(ball.ball_vertices[j + k1], ball.ball_vertices[j + k2]);
-      if (i != 0)
-        draw_line(ball.ball_vertices[j + k1], ball.ball_vertices[j + k1 + 1]);
+      draw_line(points[j + k1], points[j + k2]);
+      if (i != 0) draw_line(points[j + k1], points[j + k1 + 1]);
       color1 ^= 1;
     }
   }
 }
+
 unsigned int up_counter = 0;
 void display() {
   glEnable(GL_DEPTH_TEST);
@@ -221,13 +239,18 @@ void display() {
   draw_checkerboard();
   draw_box(1, 0, 0);
   glPushMatrix();
-  glTranslatef(ball.center.x, ball.center.y, ball.center.z);
-  draw_sphere(ball);
-  glPopMatrix();
-  if (up_counter < 7000)
-    draw_arrow(ball.center, ball.up, Vector(1, 1, 0), ball.radius + 6, 1, 0.5,
-               0);
-  draw_arrow(ball.center, ball.dir, ball.up, ball.radius + 3, 0, 0, 1);
+  {
+    glTranslatef(ball.center.x, ball.center.y, ball.center.z);
+    draw_sphere(ball.radius, ball.stack_count, ball.sector_count,
+                ball.ball_vertices);
+    glPopMatrix();
+  }
+  if (up_counter < 7000) {
+    glColor3f(0, 1, 1);
+    draw_arrow(ball.center, ball.up, Vector(1, 1, 0), ball.radius + 6);
+  }
+  glColor3f(0, 0, 1);
+  draw_arrow(ball.center, ball.dir, ball.up, ball.radius + 3);
   glutSwapBuffers();
   up_counter++;
   if (up_counter == 14000) up_counter = 0;
@@ -235,6 +258,7 @@ void display() {
 
 std::chrono::steady_clock::time_point last_time =
     std::chrono::steady_clock::now();
+
 void handle_simulation(int value) {
   if (!simulation_on) return;
   if (value == 1) {
