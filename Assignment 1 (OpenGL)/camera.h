@@ -5,15 +5,16 @@
 #include "vector.h"
 
 struct Camera {
- private:
-  const double speed = 2;           // for movement operations
-  const double rotation_speed = 1;  // in degrees
  public:
+  double speed = 2;           // for movement operations
+  double rotation_speed = 1;  // in degrees
   Point3D pos;
   Vector up, right, look;  // normalized vectors
 
-  Camera();  // initialize the camera with appropriate values
-  Camera(Point3D eye, Vector u, Vector v, Vector w);
+  Camera(const Point3D& pos = Point3D(5, 5, 5),
+         const Point3D& obj = Point3D(0, 0, 0),
+         const Vector& up =
+             Vector(0, 0, 1));  // initialize the camera with appropriate values
   void move_forward();
   void move_backward();
   void move_left();

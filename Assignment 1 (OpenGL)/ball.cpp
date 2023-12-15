@@ -66,13 +66,13 @@ void Ball::go_forward() {
     // now collision has taken place
     // update the direction vectors after collision
     if (fabs(collision_distances[0].second - collision_distances[1].second) <
-        0.5) {
+        EPS) {
       // corner collision
       dir.x *= -1;
       dir.y *= -1;
       right = dir.rotate(up, -90);
     } else {
-      int wall_idx = get_facing_wall_idx();
+      int wall_idx = collision_distances[0].first;
       if (fabs(box_vertices[wall_idx].x - box_vertices[wall_idx + 1].x) < EPS) {
         // wall parallel to y-axis
         dir.x *= -1;
@@ -173,7 +173,12 @@ double Ball::get_distance_from_wall(int wall_idx) {
   Point b: the point at which the line along the direction vector passing
   through the center would intersect the plane
   */
+  // We also need to find out if the ball is heading towards that wall or
+  // opposite direction
+  // if opposite direction, then the collision will not happen soon
   if (fabs(p1.x - p2.x) < EPS) {  // wall parallel to y-axis
+    double t = (p1.x - center.x) / dir.x;
+    if (t < -EPS) return INF;  // to invalidate this collision
     double a_to_center_distance = fabs(p1.x - center.x);
     double y_coordinate_of_b =
         (dir.y * center.x - dir.x * center.y - dir.y * p1.x) / (-dir.x);
@@ -186,6 +191,8 @@ double Ball::get_distance_from_wall(int wall_idx) {
     distance_till_collision =
         center_to_wall_distance - distance_at_collision_moment;
   } else {  // wall parallel to x-axis
+    double t = (p1.y - center.y) / dir.y;
+    if (t < -EPS) return INF;  // to invalidate this collision
     double a_to_center_distance = fabs(p1.y - center.y);
     double x_coordinate_of_b =
         (dir.y * center.x - dir.x * center.y + dir.x * p1.y) / (dir.y);
@@ -207,7 +214,8 @@ double Ball::get_distance_from_wall(int wall_idx) {
   center to the wall is equal to the radius. But both the triangles are similar.
   So, we can use the ratio to find out that till-collision-distance.
   */
-  return std::max(0.0, distance_till_collision);
+
+  return std::max(0.0, distance_till_collision);  // using the real distance
 }
 
 /*
@@ -230,7 +238,7 @@ int Ball::get_collision_type() {
   if (fabs(collision_distances[0].second - collision_distances[1].second) < 0.5)
     return 3;  // corner collision
   else {
-    int wall_idx = get_facing_wall_idx();
+    int wall_idx = collision_distances[0].first;
     if (fabs(box_vertices[wall_idx].x - box_vertices[wall_idx + 1].x) < EPS)
       // wall parallel to y-axis
       return 1;
@@ -284,8 +292,14 @@ int Ball::get_facing_wall_idx() {
 }
 
 double Ball::next_collision_time() {
-  int facing_wall_idx = get_facing_wall_idx();
-  double dist = get_distance_from_wall(facing_wall_idx);
+  std::vector<std::pair<int, double>> collision_distances =
+      get_collision_distances();
+  std::sort(
+      collision_distances.begin(), collision_distances.end(),
+      [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second < b.second;
+      });
+  double dist = collision_distances[0].second;
   double time = dist / ((dir_scalar_multiplier * dir.norm()) / dt);  // in ms
   return time;
 }

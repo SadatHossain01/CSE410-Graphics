@@ -34,6 +34,24 @@ Point3D Point3D::operator*(const double& d) const {
   return Point3D(x * d, y * d, z * d);
 }
 
+Point3D Point3D::operator*=(const double& d) {
+  x *= d;
+  y *= d;
+  z *= d;
+  return *this;
+}
+
+Point3D Point3D::operator/(const double& d) const {
+  return Point3D(x / d, y / d, z / d);
+}
+
+Point3D Point3D::operator/=(const double& d) {
+  x /= d;
+  y /= d;
+  z /= d;
+  return *this;
+}
+
 double Point3D::distance(const Point3D& p) const {
   return sqrt(pow(x - p.x, 2) + pow(y - p.y, 2) + pow(z - p.z, 2));
 }

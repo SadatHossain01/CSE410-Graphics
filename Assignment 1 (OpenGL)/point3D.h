@@ -15,6 +15,9 @@ struct Point3D {
   Point3D operator-(const Vector& v) const;
   Point3D operator-=(const Vector& v);
   Point3D operator*(const double& d) const;
+  Point3D operator*=(const double& d);
+  Point3D operator/(const double& d) const;
+  Point3D operator/=(const double& d);
   double distance(const Point3D& p) const;
 
   // returns a tuple of (a, b, c, d) where ax + by + cz + d = 0 is the plane

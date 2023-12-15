@@ -10,7 +10,7 @@
 #include "ball.h"
 #include "camera.h"
 
-Camera camera;
+Camera camera(Point3D(45, 61, 87), Point3D(0, 0, 0), Vector(0, 0, 1));
 Ball ball;
 bool simulation_on = false;
 
@@ -287,6 +287,8 @@ void idle() {
 }
 
 void handle_keys(unsigned char key, int x, int y) {
+  // std::vector<std::pair<int, double>> distances =
+  //     ball.get_collision_distances();
   switch (key) {
     case '1':
       camera.look_left();
@@ -342,6 +344,16 @@ void handle_keys(unsigned char key, int x, int y) {
           glutTimerFunc(ball.dt, handle_simulation, 1);
       }
       break;
+    // case 'c':
+    //   printf("Center: (%lf, %lf, %lf)\n", ball.center.x, ball.center.y,
+    //          ball.center.z);
+    //   for (int i = 0; i < distances.size(); i++) {
+    //     printf("Wall %d p1: %lf %lf p2: %lf %lf, Distance: %lf\n", i,
+    //            box_vertices[i].x, box_vertices[i].y, box_vertices[i + 1].x,
+    //            box_vertices[i + 1].y, distances[i].second);
+    //     printf("Wall %d: %lf\n", distances[i].first, distances[i].second);
+    //   }
+    //   break;
     default:
       printf("Unknown key pressed\n");
       break;

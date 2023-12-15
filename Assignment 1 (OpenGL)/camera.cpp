@@ -2,25 +2,24 @@
 
 #include <cassert>
 #include <cmath>
+const double EPS = 1e-6;
 
-Camera::Camera() {
+Camera::Camera(const Point3D& eye, const Point3D& look_at,
+               const Vector& up_vector) {
   // initialize the camera with appropriate values
-  pos = Point3D(45, 61, 87);
-  look =
-      Vector(-pos.x, -pos.y, -pos.z)
-          .normalize();  // so, looking at origin (which is the reference point)
-  right.x = look.y;
-  right.y = -look.x;
-  right.z = 0;
-  right = right.normalize();
-  up = right.cross(look).normalize();
-}
-
-Camera::Camera(Point3D eye, Vector u, Vector v, Vector w)
-    : pos(eye), up(u), right(v), look(w) {
-  assert(u.check_normalized() && v.check_normalized() && w.check_normalized());
-  assert(u.check_orthogonal(v) && v.check_orthogonal(w) &&
-         w.check_orthogonal(u));
+  pos = eye;
+  look = Vector(look_at.x - eye.x, look_at.y - eye.y, look_at.z - eye.z)
+             .normalize();
+  if (fabs(look.dot(up_vector)) < EPS) {
+    up = up_vector.normalize();
+    right = look.cross(up).normalize();
+  } else {
+    right.x = look.y;
+    right.y = -look.x;
+    right.z = 0;
+    right = right.normalize();
+    up = right.cross(look).normalize();
+  }
 }
 
 void Camera::move_forward() { pos += speed * look; }
