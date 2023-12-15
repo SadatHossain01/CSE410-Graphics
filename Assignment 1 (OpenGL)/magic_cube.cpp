@@ -24,8 +24,6 @@ double sphere_radius = 0;
 double sphere_radius_increment =
     max_sphere_radius / (max_triangle_length / triangle_length_increment);
 
-// Cylinder
-
 // Axis Rotation
 double axis_rotation_angle =
     45;  // in degrees, for rotation of the object on its own axis
@@ -194,25 +192,27 @@ void draw_single_cylinder(double height, double radius, int segment_count) {
   const double dihedral_angle = acos(-1.0 / 3.0);
   double offset = M_PI - dihedral_angle;
 
-  for (int i = 0; i < segment_count; i++) {
+  for (int i = 0; i <= segment_count; i++) {
+    // Point Generation
     double angle = -offset / 2.0 + i * offset / segment_count;
     points[i] = Point3D(radius * cos(angle), radius * sin(angle), 0);
-  }
 
-  for (int i = 0; i < segment_count; i++) {
-    glBegin(GL_QUADS);
-    {
-      glVertex3f(points[i].x, points[i].y, -height / 2.0);
-      glVertex3f(points[i].x, points[i].y, height / 2.0);
-      glVertex3f(points[i + 1].x, points[i + 1].y, height / 2.0);
-      glVertex3f(points[i + 1].x, points[i + 1].y, -height / 2.0);
+    // drawing the cylinder
+    if (i) {
+      glBegin(GL_QUADS);
+      {
+        glVertex3f(points[i - 1].x, points[i - 1].y, -height / 2.0);
+        glVertex3f(points[i - 1].x, points[i - 1].y, height / 2.0);
+        glVertex3f(points[i].x, points[i].y, height / 2.0);
+        glVertex3f(points[i].x, points[i].y, -height / 2.0);
+      }
+      glEnd();
     }
-    glEnd();
   }
 }
 
 void draw_cylinders() {
-  glColor3f(1, 1, 0);  // yellow
+  glColor3f(1, 1, 0);  // all yellow
 
   // First 4: Aligned with x axis
   // Next 4: Middle 4 cylinders (horizontal)
