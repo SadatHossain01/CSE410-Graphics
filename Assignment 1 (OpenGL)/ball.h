@@ -15,8 +15,8 @@ struct Ball {
   const int sector_count;
   const int stack_count;
   const double dir_scalar_multiplier = 1;
-  const double dt = 20;           // ms
-  double dir_rotation_angle = 1;  // in degrees
+  const double dt = 20;              // ms
+  double dir_rotation_angle = 0.25;  // in degrees
   std::vector<Point3D> ball_vertices;
   std::vector<Point3D> box_vertices;
 

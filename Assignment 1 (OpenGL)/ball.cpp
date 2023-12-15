@@ -249,25 +249,38 @@ int Ball::get_facing_wall_idx() {
   for (int i = 0; i < box_vertices.size() - 1; i++) {
     Point3D p1 = box_vertices[i];
     Point3D p2 = box_vertices[i + 1];
+    // printf("Wall %d: (%lf, %lf) (%lf, %lf)\n", i, p1.x, p1.y, p2.x, p2.y);
+    // printf("Center: (%lf, %lf)\n", center.x, center.y);
+    // printf("Dir: (%lf, %lf)\n", dir.x, dir.y);
     if (fabs(p1.x - p2.x) < EPS) {  // wall parallel to y-axis
       // the wall's equation will be, x = p1.x
       double t = (p1.x - center.x) / dir.x;
+      // printf("parallel to y: t: %lf\n", t);
       if (t < -EPS) continue;
       double y = center.y + dir.y * t;
+      // printf("x: %lf, y: %lf\n", center.x + dir.x * t, y);
       if (y >= std::min(p1.y, p2.y) - EPS && y <= std::max(p1.y, p2.y) + EPS)
         return i;
     } else {  // wall parallel to x-axis
       // the wall's equation will be, y = p1.y
       double t = (p1.y - center.y) / dir.y;
+      // printf("parallel to x: t: %lf\n", t);
       if (t < -EPS) continue;
       double x = center.x + dir.x * t;
+      // printf("x: %lf, y: %lf\n", x, center.y + dir.y * t);
       if (x >= std::min(p1.x, p2.x) - EPS && x <= std::max(p1.x, p2.x) + EPS)
         return i;
     }
   }
 
-  assert(false);  // should never reach here
-  return -1;
+  std::vector<std::pair<int, double>> collision_distances =
+      get_collision_distances();
+  std::sort(
+      collision_distances.begin(), collision_distances.end(),
+      [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second < b.second;
+      });
+  return collision_distances[0].first;
 }
 
 double Ball::next_collision_time() {

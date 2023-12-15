@@ -225,16 +225,26 @@ void display() {
   draw_sphere(ball);
   glPopMatrix();
   if (up_counter < 7000)
-    draw_arrow(ball.center, ball.up, -1 * ball.dir, ball.radius + 6, 1, 0.5, 0);
-  up_counter++;
-  if (up_counter == 14000) up_counter = 0;
+    draw_arrow(ball.center, ball.up, Vector(1, 1, 0), ball.radius + 6, 1, 0.5,
+               0);
   draw_arrow(ball.center, ball.dir, ball.up, ball.radius + 3, 0, 0, 1);
   glutSwapBuffers();
+  up_counter++;
+  if (up_counter == 14000) up_counter = 0;
 }
 
+std::chrono::steady_clock::time_point last_time =
+    std::chrono::steady_clock::now();
 void handle_simulation(int value) {
   if (!simulation_on) return;
   if (value == 1) {
+    std::chrono::steady_clock::time_point current_time =
+        std::chrono::steady_clock::now();
+    double time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              current_time - last_time)
+                              .count();
+    if (time_elapsed < ball.dt) return;
+    last_time = current_time;
     // typical ball movement
     ball.center += ball.dir_scalar_multiplier * ball.dir;
     double angle = 360 * (ball.dir.norm() * ball.dir_scalar_multiplier) /
