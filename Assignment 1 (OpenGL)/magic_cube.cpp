@@ -120,27 +120,35 @@ void draw_sphere_quads(double radius, int stack_count, int sector_count) {
 }
 
 void draw_spheres() {
-  // 4 sphers along x and z axis
+  // 4 spheres along x and y axis
+  // even index: green, along the y axis
+  // odd index: blue, along the x axis
   for (int i = 0; i < 4; i++) {
     glPushMatrix();
     {
       // blue or green depending on i
-      if (i % 2)
+      if (i % 2) {
+        // blue
         glColor3f(0, 0, 1);
-      else
+        glRotatef(i * 90, 0, 1, 0);
+      } else {
+        // green
         glColor3f(0, 1, 0);
-      glRotatef(i * 90, 0, 1, 0);
+        glRotatef(90 + i * 90, 1, 0, 0);
+      }
+      // prior to this rotation, the quad is at the +ve end of z axis,
+      // rotating it along z axis would do nothing
       glTranslatef(0, 0, triangle_length);
       draw_sphere_quads(sphere_radius, 100, 100);
     }
     glPopMatrix();
   }
-  // the two spheres along the y axis
+  // the top and bottom two spheres along the z axis
   for (int i = 0; i < 2; i++) {
     glPushMatrix();
     {
       glColor3f(1, 0, 0);  // red
-      glRotatef(90 + 180 * i, 1, 0, 0);
+      glRotatef(180 * i, 0, 1, 0);
       glTranslatef(0, 0, triangle_length);
       draw_sphere_quads(sphere_radius, 100, 100);
     }
@@ -151,18 +159,18 @@ void draw_spheres() {
 void draw_octahedron() {
   double diff = (max_triangle_length - triangle_length) / 3.0;
 
-  // 0 to 3: 4 pyramids to the side of +ve y axis
-  // 4 to 7: 4 pyramids to the side of -ve y axis
+  // 0 to 3: top 4 pyramids (to the side of +ve z axis)
+  // 4 to 7: bottom 4 pyramids (to the side of -ve z axis)
   for (int i = 0; i < 8; i++) {
     int idx = i % 4;
     glPushMatrix();
     {
-      if (i < 4) 
+      if (i < 4)
         glColor3f(1 - (i % 2), i % 2, 1);
-      else 
+      else
         glColor3f(i % 2, 1 - (i % 2), 1);
-      glRotatef(idx * 90, 0, 1, 0);
-      if (i >= 4) glRotatef(180, 1, 0, 1); // for rotating upside down
+      glRotatef(idx * 90, 0, 0, 1);
+      if (i >= 4) glRotatef(180, 1, 1, 0);  // for rotating upside down
       glTranslatef(diff, diff, diff);
       glScaled(triangle_length, triangle_length, triangle_length);
       draw_triangle(Point3D(1, 0, 0), Point3D(0, 1, 0), Point3D(0, 0, 1));
@@ -199,9 +207,9 @@ void draw_single_cylinder(double height, double radius, int segment_count) {
 void draw_cylinders() {
   glColor3f(1, 1, 0);  // all yellow
 
-  // First 4: Aligned with x axis
-  // Next 4: Middle 4 cylinders (horizontal)
-  // Last 4: Aligned with y axis
+  // First 4: connects red-blue spheres
+  // Next 4: Middle 4 cylinders (horizontal) connecting green-blue spheres
+  // Last 4: connects red-green spheres
   for (int i = 0; i < 12; i++) {
     int idx = i % 4;
     glPushMatrix();
