@@ -274,6 +274,7 @@ void handle_simulation(int value) {
     double angle = 360 * (ball.dir.norm() * ball.dir_scalar_multiplier) /
                    (2 * M_PI * ball.radius);
     ball.rotate_ball_vertices(ball.right, -angle);
+    glutTimerFunc(ball.dt, handle_simulation, 1);
   } else if (value == 2) {
     // collision handling
     int collision_type = ball.get_collision_type();
@@ -293,15 +294,9 @@ void handle_simulation(int value) {
       ball.dir.y *= -1;
       ball.right = ball.dir.rotate(ball.up, -90);
     }
-  }
-  double time = ball.next_collision_time();
-  // int idx = ball.get_facing_wall_idx();
-  // double dist = ball.get_distance_from_wall(idx);
-  // printf("Time: %lf, Distance: %lf, Wall: %d\n", time, dist, idx);
-  if (time <= ball.dt + EPS)
+    double time = ball.next_collision_time();
     glutTimerFunc(time, handle_simulation, 2);
-  else
-    glutTimerFunc(ball.dt, handle_simulation, 1);
+  }
 }
 
 void idle() {
@@ -348,24 +343,22 @@ void handle_keys(unsigned char key, int x, int y) {
       ball.rotate_dir_ccw();
       if (simulation_on) {
         double time = ball.next_collision_time();
-        if (time <= ball.dt + EPS) glutTimerFunc(time, handle_simulation, 2);
+        glutTimerFunc(time, handle_simulation, 2);
       }
       break;
     case 'l':
       ball.rotate_dir_cw();
       if (simulation_on) {
         double time = ball.next_collision_time();
-        if (time <= ball.dt + EPS) glutTimerFunc(time, handle_simulation, 2);
+        glutTimerFunc(time, handle_simulation, 2);
       }
       break;
     case ' ':
       simulation_on ^= 1;
       if (simulation_on) {
         double time = ball.next_collision_time();
-        if (time <= ball.dt + EPS)
-          glutTimerFunc(time, handle_simulation, 2);
-        else
-          glutTimerFunc(ball.dt, handle_simulation, 1);
+        glutTimerFunc(ball.dt, handle_simulation, 1);
+        glutTimerFunc(time, handle_simulation, 2);
       }
       break;
     // case 'c':
