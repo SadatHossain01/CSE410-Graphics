@@ -45,7 +45,7 @@ void handle_keys(unsigned char key, int x, int y);
 void handle_special_keys(int key, int x, int y);
 
 void init() {
-  camera.rotation_speed = 0.25;
+  camera.rotation_speed = 1;
   camera.speed = 0.5;
   glClearColor(0.0f, 0.0f, 0.0f,
                1.0f);  // Set background color to black and opaque
@@ -68,11 +68,11 @@ void draw_line(const Point3D& a, const Point3D& b) {
 void draw_axes() {
   glLineWidth(3);
   glColor3f(1, 0, 0);
-  draw_line(Point3D(-5, 0, 0), Point3D(5, 0, 0));
+  draw_line(Point3D(0, 0, 0), Point3D(5, 0, 0));
   glColor3f(0, 1, 0);
-  draw_line(Point3D(0, -5, 0), Point3D(0, 5, 0));
+  draw_line(Point3D(0, 0, 0), Point3D(0, 5, 0));
   glColor3f(0, 0, 1);
-  draw_line(Point3D(0, 0, -5), Point3D(0, 0, 5));
+  draw_line(Point3D(0, 0, 0), Point3D(0, 0, 5));
   glLineWidth(1);
 }
 
@@ -95,6 +95,7 @@ void draw_sphere_quads(double radius, int stack_count, int sector_count) {
     for (int j = 0; j <= sector_count; j++) {
       points[i][j].x = -1 + 2.0 * i / stack_count;
       points[i][j].y = -1 + 2.0 * j / sector_count;
+      // taking z = 1 only to get the top quad
       points[i][j].z = 1;
 
       points[i][j] *= radius / sqrt(points[i][j].x * points[i][j].x +
@@ -119,7 +120,7 @@ void draw_sphere_quads(double radius, int stack_count, int sector_count) {
 }
 
 void draw_spheres() {
-  // 4 sphers in 4 corners
+  // 4 sphers along x and z axis
   for (int i = 0; i < 4; i++) {
     glPushMatrix();
     {
@@ -134,7 +135,7 @@ void draw_spheres() {
     }
     glPopMatrix();
   }
-  // top and bottom
+  // the two spheres along the y axis
   for (int i = 0; i < 2; i++) {
     glPushMatrix();
     {
@@ -148,36 +149,20 @@ void draw_spheres() {
 }
 
 void draw_octahedron() {
-  double rem_length = max_triangle_length - triangle_length;
-  double diff = rem_length / 3.0;
-  // upper pyramid
-  for (int i = 0; i < 4; i++) {
-    glPushMatrix();
-    {
-      // Purple or cyan depending on i
-      if (i % 2)
-        glColor3f(0, 1, 1);
-      else
-        glColor3f(1, 0, 1);
-      glRotatef(i * 90, 0, 1, 0);
-      glTranslatef(diff, diff, diff);
-      glScaled(triangle_length, triangle_length, triangle_length);
-      draw_triangle(Point3D(1, 0, 0), Point3D(0, 1, 0), Point3D(0, 0, 1));
-    }
-    glPopMatrix();
-  }
+  double diff = (max_triangle_length - triangle_length) / 3.0;
 
-  // lower pyramid
-  for (int i = 0; i < 4; i++) {
+  // 0 to 3: 4 pyramids to the side of +ve y axis
+  // 4 to 7: 4 pyramids to the side of -ve y axis
+  for (int i = 0; i < 8; i++) {
+    int idx = i % 4;
     glPushMatrix();
     {
-      // Purple or cyan depending on i
-      if (i % 2)
-        glColor3f(1, 0, 1);
-      else
-        glColor3f(0, 1, 1);
-      glRotatef(i * 90, 0, 1, 0);
-      glRotatef(180, 1, 0, 1);
+      if (i < 4) 
+        glColor3f(1 - (i % 2), i % 2, 1);
+      else 
+        glColor3f(i % 2, 1 - (i % 2), 1);
+      glRotatef(idx * 90, 0, 1, 0);
+      if (i >= 4) glRotatef(180, 1, 0, 1); // for rotating upside down
       glTranslatef(diff, diff, diff);
       glScaled(triangle_length, triangle_length, triangle_length);
       draw_triangle(Point3D(1, 0, 0), Point3D(0, 1, 0), Point3D(0, 0, 1));
@@ -197,7 +182,7 @@ void draw_single_cylinder(double height, double radius, int segment_count) {
     double angle = -offset / 2.0 + i * offset / segment_count;
     points[i] = Point3D(radius * cos(angle), radius * sin(angle), 0);
 
-    // drawing the cylinder
+    // drawing the cylinder on the go
     if (i) {
       glBegin(GL_QUADS);
       {
@@ -218,13 +203,14 @@ void draw_cylinders() {
   // Next 4: Middle 4 cylinders (horizontal)
   // Last 4: Aligned with y axis
   for (int i = 0; i < 12; i++) {
+    int idx = i % 4;
     glPushMatrix();
     {
       if (i >= 4 && i < 8)
         glRotatef(90, 1, 0, 0);
       else if (i >= 8)
         glRotatef(90, 0, 0, 1);
-      glRotatef(45 + i * 90, 0, 1, 0);
+      glRotatef(45 + idx * 90, 0, 1, 0);
       glTranslatef(triangle_length / sqrt(2.0), 0, 0);
       draw_single_cylinder(triangle_length * sqrt(2.0), sphere_radius, 100);
     }
@@ -243,7 +229,7 @@ void display() {
             camera.up.z);
 
   glRotatef(axis_rotation_angle, 0, 0, 1);
-  draw_axes();
+  // draw_axes();
   draw_octahedron();
   draw_spheres();
   draw_cylinders();
