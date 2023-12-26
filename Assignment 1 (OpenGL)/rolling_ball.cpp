@@ -13,7 +13,7 @@
 Camera camera(Point3D(80, 80, 115), Point3D(0, 0, 0), Vector(0, 0, 1));
 Ball ball;
 bool simulation_on = false;
-
+int n_walls;
 const double EPS = 1e-6;
 
 // Wall Constants
@@ -47,7 +47,7 @@ void init() {
   glClearColor(0.0f, 0.0f, 0.0f,
                1.0f);  // Set background color to black and opaque
 
-  generate_wall_vertices(8);
+  generate_wall_vertices(n_walls);
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -407,6 +407,7 @@ void handle_special_keys(int key, int x, int y) {
 }
 
 int main(int argc, char **argv) {
+  n_walls = argc > 1 ? atoi(argv[1]) : 4;
   glutInit(&argc, argv);
   glutInitWindowSize(480, 480);
   glutInitWindowPosition(100, 100);
