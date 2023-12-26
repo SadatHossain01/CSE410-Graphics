@@ -3,38 +3,40 @@
 #ifdef __linux__
 #include <GL/glut.h>
 #elif WIN32
-#include <glut.h>
+#include <GL/glut.h>
 #include <windows.h>
 #endif
 
 #include "ball.h"
 #include "camera.h"
 
-Camera camera(Point3D(45, 61, 87), Point3D(0, 0, 0), Vector(0, 0, 1));
+Camera camera(Point3D(80, 80, 115), Point3D(0, 0, 0), Vector(0, 0, 1));
 Ball ball;
 bool simulation_on = false;
 
 const double EPS = 1e-6;
 
 // Wall Constants
-const double wall_height = 5;
+const double wall_height = 10;
 const double wall_thickness = 2;
 const double wall_width = 100;
 std::vector<Point3D> box_vertices;
 
 // Function Declarations
 void init();
+void draw_axes();
+void generate_wall_vertices(int n_walls);
 void draw_square(double a);
-void draw_wall(const Point3D& a, const Point3D& b, const Point3D& c,
-               const Point3D& d);
+void draw_wall(const Point3D &a, const Point3D &b, const Point3D &c,
+               const Point3D &d);
 void draw_box(double r, double g, double b);
 void draw_checkerboard();
-void draw_line(const Point3D& a, const Point3D& b);
-void draw_triangle(const Point3D& a, const Point3D& b, const Point3D& c);
-void draw_arrow(const Point3D& s, const Vector& dir, const Vector& normal,
+void draw_line(const Point3D &a, const Point3D &b);
+void draw_triangle(const Point3D &a, const Point3D &b, const Point3D &c);
+void draw_arrow(const Point3D &s, const Vector &dir, const Vector &normal,
                 double len);
 void draw_sphere(double radius, int stack_count, int sector_count,
-                 const std::vector<Point3D>& points);
+                 const std::vector<Point3D> &points);
 void display();
 void idle();
 void handle_simulation(int value);
@@ -45,18 +47,48 @@ void init() {
   glClearColor(0.0f, 0.0f, 0.0f,
                1.0f);  // Set background color to black and opaque
 
-  box_vertices.push_back(Point3D(-wall_width / 2.0, -wall_width / 2.0, 0));
-  box_vertices.push_back(Point3D(-wall_width / 2.0, wall_width / 2.0, 0));
-  box_vertices.push_back(Point3D(wall_width / 2.0, wall_width / 2.0, 0));
-  box_vertices.push_back(Point3D(wall_width / 2.0, -wall_width / 2.0, 0));
-  box_vertices.push_back(box_vertices.front());  // close the wall
-
-  ball.box_vertices = box_vertices;
+  generate_wall_vertices(8);
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
 
   gluPerspective(80, 1, 1, 1000.0);
+}
+
+void generate_wall_vertices(int n) {
+  if (n < 3) n = 4;
+  if (n == 4) {
+    box_vertices.push_back(
+        Point3D(-wall_width / 2.0, -wall_width / 2.0, ball.radius));
+    box_vertices.push_back(
+        Point3D(-wall_width / 2.0, wall_width / 2.0, ball.radius));
+    box_vertices.push_back(
+        Point3D(wall_width / 2.0, wall_width / 2.0, ball.radius));
+    box_vertices.push_back(
+        Point3D(wall_width / 2.0, -wall_width / 2.0, ball.radius));
+    box_vertices.push_back(box_vertices.front());  // close the wall
+  } else {
+    double angle = 360.0 / n;
+    Vector vec = Vector(100, 0, ball.radius);
+    for (int i = 0; i < n; i++) {
+      box_vertices.push_back(Point3D(vec.x, vec.y, vec.z));
+      vec = vec.rotate(Vector(0, 0, 1), angle);
+    }
+    box_vertices.push_back(box_vertices.front());  // close the wall
+  }
+
+  ball.box_vertices = box_vertices;
+}
+
+void draw_axes() {
+  glLineWidth(3);
+  glColor3f(1, 0, 0);
+  draw_line(Point3D(0, 0, 0), Point3D(100, 0, 0));
+  glColor3f(0, 1, 0);
+  draw_line(Point3D(0, 0, 0), Point3D(0, 100, 0));
+  glColor3f(0, 0, 1);
+  draw_line(Point3D(0, 0, 0), Point3D(0, 0, 100));
+  glLineWidth(1);
 }
 
 void draw_square(double a) {
@@ -71,8 +103,8 @@ void draw_square(double a) {
 }
 
 // the points are in ccw order
-void draw_wall(const Point3D& a, const Point3D& b, const Point3D& c,
-               const Point3D& d) {
+void draw_wall(const Point3D &a, const Point3D &b, const Point3D &c,
+               const Point3D &d) {
   glBegin(GL_QUADS);
   {
     glVertex3f(a.x, a.y, a.z);
@@ -86,24 +118,26 @@ void draw_wall(const Point3D& a, const Point3D& b, const Point3D& c,
 void draw_box(double r, double g, double b) {
   glColor3f(r, g, b);
   for (int i = 0; i < box_vertices.size() - 1; i++) {
+    Point3D aa = box_vertices[i] + Point3D(0, 0, -wall_height / 2.0);
+    Point3D bb = box_vertices[i + 1] + Point3D(0, 0, -wall_height / 2.0);
+
     Point3D a, b;  // another set of points for the outer layer)
-    a = box_vertices[i], b = box_vertices[i + 1];
+    a = aa, b = bb;
     a.x += (a.x > 0 ? 1 : -1) * wall_thickness;
     a.y += (a.y > 0 ? 1 : -1) * wall_thickness;
     b.x += (b.x > 0 ? 1 : -1) * wall_thickness;
     b.y += (b.y > 0 ? 1 : -1) * wall_thickness;
-    draw_wall(box_vertices[i], box_vertices[i + 1],
-              box_vertices[i + 1] + Point3D(0, 0, wall_height),
-              box_vertices[i] + Point3D(0, 0, wall_height));
+
+    draw_wall(aa, bb, bb + Point3D(0, 0, wall_height),
+              aa + Point3D(0, 0, wall_height));
     draw_wall(a, b, b + Point3D(0, 0, wall_height),
               a + Point3D(0, 0, wall_height));
-    draw_wall(box_vertices[i], a, a + Point3D(0, 0, wall_height),
-              box_vertices[i] + Point3D(0, 0, wall_height));
-    draw_wall(box_vertices[i + 1], b, b + Point3D(0, 0, wall_height),
-              box_vertices[i + 1] + Point3D(0, 0, wall_height));
-    draw_wall(box_vertices[i], box_vertices[i + 1], b, a);
-    draw_wall(box_vertices[i] + Point3D(0, 0, wall_height),
-              box_vertices[i + 1] + Point3D(0, 0, wall_height),
+    draw_wall(aa, a, a + Point3D(0, 0, wall_height),
+              aa + Point3D(0, 0, wall_height));
+    draw_wall(bb, b, b + Point3D(0, 0, wall_height),
+              bb + Point3D(0, 0, wall_height));
+    draw_wall(aa, bb, b, a);
+    draw_wall(aa + Point3D(0, 0, wall_height), bb + Point3D(0, 0, wall_height),
               b + Point3D(0, 0, wall_height), a + Point3D(0, 0, wall_height));
   }
 }
@@ -126,7 +160,7 @@ void draw_checkerboard() {
   }
 }
 
-void draw_line(const Point3D& a, const Point3D& b) {
+void draw_line(const Point3D &a, const Point3D &b) {
   glBegin(GL_LINES);
   {
     glVertex3f(a.x, a.y, a.z);
@@ -135,7 +169,7 @@ void draw_line(const Point3D& a, const Point3D& b) {
   glEnd();
 }
 
-void draw_triangle(const Point3D& a, const Point3D& b, const Point3D& c) {
+void draw_triangle(const Point3D &a, const Point3D &b, const Point3D &c) {
   glBegin(GL_TRIANGLES);
   {
     glVertex3f(a.x, a.y, a.z);
@@ -158,7 +192,7 @@ void draw_triangle(const Point3D& a, const Point3D& b, const Point3D& c) {
  * @note The normal vector is necessary to draw the arrowhead in the proper
  * plane.
  */
-void draw_arrow(const Point3D& s, const Vector& dir, const Vector& normal,
+void draw_arrow(const Point3D &s, const Vector &dir, const Vector &normal,
                 double len) {
   Vector new_dir = dir.normalize();
   Vector new_normal = normal.normalize();
@@ -195,7 +229,7 @@ void draw_arrow(const Point3D& s, const Vector& dir, const Vector& normal,
 }
 
 void draw_sphere(double radius, int stack_count, int sector_count,
-                 const std::vector<Point3D>& points) {
+                 const std::vector<Point3D> &points) {
   double c1r = 1, c1g = 0.22, c1b = 0.22;
   double c2r = 0, c2g = 1, c2b = 0.22;
 
@@ -228,14 +262,7 @@ void display() {
             camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
             camera.up.z);
 
-  // draw the 3 axes
-  // glColor3f(1, 0, 0);
-  // draw_line(Point3D(0, 0, 0), Point3D(100, 0, 0));
-  // glColor3f(0, 1, 0);
-  // draw_line(Point3D(0, 0, 0), Point3D(0, 100, 0));
-  // glColor3f(0, 0, 1);
-  // draw_line(Point3D(0, 0, 0), Point3D(0, 0, 100));
-
+  // draw_axes();
   draw_checkerboard();
   draw_box(1, 0, 0);
   glPushMatrix();
@@ -267,7 +294,10 @@ void handle_simulation(int value) {
     double time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                               current_time - last_time)
                               .count();
-    if (time_elapsed < ball.dt) return;
+    if (time_elapsed < ball.dt) {
+      glutTimerFunc(ball.dt - time_elapsed, handle_simulation, 1);
+      return;
+    }
     last_time = current_time;
     // typical ball movement
     ball.center += ball.dir_scalar_multiplier * ball.dir;
@@ -276,24 +306,9 @@ void handle_simulation(int value) {
     ball.rotate_ball_vertices(ball.right, -angle);
     glutTimerFunc(ball.dt, handle_simulation, 1);
   } else if (value == 2) {
-    // collision handling
-    int collision_type = ball.get_collision_type();
-    // printf("Collision type: %d\n", collision_type);
-    // if no collision, -1 was returned
-    if (collision_type == 1) {
-      // wall parallel to y axis
-      ball.dir.x *= -1;
-      ball.right = ball.dir.rotate(ball.up, -90);
-    } else if (collision_type == 2) {
-      // wall parallel to x axis
-      ball.dir.y *= -1;
-      ball.right = ball.dir.rotate(ball.up, -90);
-    } else if (collision_type == 3) {
-      // corner collision
-      ball.dir.x *= -1;
-      ball.dir.y *= -1;
-      ball.right = ball.dir.rotate(ball.up, -90);
-    }
+    Point3D temp = ball.center + ball.dir_scalar_multiplier * ball.dir;
+    if (!ball.is_ball_inside_box(temp, ball.radius, box_vertices))
+      ball.update_direction_after_collision();
     double time = ball.next_collision_time();
     glutTimerFunc(time, handle_simulation, 2);
   }
@@ -306,8 +321,6 @@ void idle() {
 }
 
 void handle_keys(unsigned char key, int x, int y) {
-  // std::vector<std::pair<int, double>> distances =
-  //     ball.get_collision_distances();
   switch (key) {
     case '1':
       camera.look_left();
@@ -361,16 +374,6 @@ void handle_keys(unsigned char key, int x, int y) {
         glutTimerFunc(time, handle_simulation, 2);
       }
       break;
-    // case 'c':
-    //   printf("Center: (%lf, %lf, %lf)\n", ball.center.x, ball.center.y,
-    //          ball.center.z);
-    //   for (int i = 0; i < distances.size(); i++) {
-    //     printf("Wall %d p1: %lf %lf p2: %lf %lf, Distance: %lf\n", i,
-    //            box_vertices[i].x, box_vertices[i].y, box_vertices[i + 1].x,
-    //            box_vertices[i + 1].y, distances[i].second);
-    //     printf("Wall %d: %lf\n", distances[i].first, distances[i].second);
-    //   }
-    //   break;
     default:
       printf("Unknown key pressed\n");
       break;
@@ -403,7 +406,7 @@ void handle_special_keys(int key, int x, int y) {
   }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitWindowSize(480, 480);
   glutInitWindowPosition(100, 100);

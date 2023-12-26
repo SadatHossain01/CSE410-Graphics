@@ -16,6 +16,8 @@ struct Vector {
   Vector cross(const Vector& v) const;
   Vector normalize() const;
   Vector rotate(const Vector& axis, double angle) const;  // angle in degrees
+  // normal should be normalized
+  Vector get_reflection(const Vector& normal) const;
   bool check_normalized() const;
   bool check_orthogonal(const Vector& v) const;
   double norm() const;

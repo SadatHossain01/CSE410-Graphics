@@ -3,7 +3,7 @@
 #ifdef __linux__
 #include <GL/glut.h>
 #elif WIN32
-#include <glut.h>
+#include <GL/glut.h>
 #include <windows.h>
 #endif
 
@@ -31,9 +31,9 @@ double axis_angle_increment = 5;  // in degrees
 
 // Function Declarations
 void init();
-void draw_line(const Point3D& a, const Point3D& b);
+void draw_line(const Point3D &a, const Point3D &b);
 void draw_axes();
-void draw_triangle(const Point3D& a, const Point3D& b, const Point3D& c);
+void draw_triangle(const Point3D &a, const Point3D &b, const Point3D &c);
 void draw_sphere_quads(double radius, int stack_count, int sector_count);
 void draw_spheres();
 void draw_octahedron();
@@ -56,7 +56,7 @@ void init() {
   gluPerspective(80, 1, 1, 1000.0);
 }
 
-void draw_line(const Point3D& a, const Point3D& b) {
+void draw_line(const Point3D &a, const Point3D &b) {
   glBegin(GL_LINES);
   {
     glVertex3f(a.x, a.y, a.z);
@@ -76,7 +76,7 @@ void draw_axes() {
   glLineWidth(1);
 }
 
-void draw_triangle(const Point3D& a, const Point3D& b, const Point3D& c) {
+void draw_triangle(const Point3D &a, const Point3D &b, const Point3D &c) {
   glBegin(GL_TRIANGLES);
   {
     glVertex3f(a.x, a.y, a.z);
@@ -333,7 +333,7 @@ void handle_special_keys(int key, int x, int y) {
   }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitWindowSize(600, 600);
   glutInitWindowPosition(100, 100);

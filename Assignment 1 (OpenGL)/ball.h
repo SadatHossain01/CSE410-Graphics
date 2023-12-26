@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include "line.h"
 #include "point3D.h"
 #include "vector.h"
 
@@ -26,16 +27,14 @@ struct Ball {
   void go_backward();
   void rotate_dir_ccw();
   void rotate_dir_cw();
-  void rotate_ball_vertices(const Vector& axis, double angle);
+  void rotate_ball_vertices(const Vector &axis, double angle);
 
   // Collision Related Functions
+  void update_direction_after_collision(int wall_idx = -1);
   bool is_ball_inside_box(Point3D c, double rad,
-                          const std::vector<Point3D>& box_vertices);
+                          const std::vector<Point3D> &box_vertices);
   double get_distance_from_wall(int wall_idx);
   std::vector<std::pair<int, double>>
   get_collision_distances();  // returns vector of <wall_index, distance>
-  int get_collision_type();
-  int get_facing_wall_idx();  // returns which wall the ball is going to hit if
-                              // uninterrupted
   double next_collision_time();
 };

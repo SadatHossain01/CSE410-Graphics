@@ -78,4 +78,11 @@ Vector Vector::rotate(const Vector& axis, double angle) const {
   return v4;
 }
 
+Vector Vector::get_reflection(const Vector& normal) const {
+  assert(normal.check_normalized());
+  Vector v = *this;
+  Vector n = normal;
+  return v - 2 * v.dot(n) * n;
+}
+
 double Vector::norm() const { return sqrt(x * x + y * y + z * z); }
