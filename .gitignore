@@ -1,1 +1,6 @@
 .vscode/settings.json
+*.json
+*.exe
+Assignment 2 (Rasterization)/stage1.txt
+Assignment 2 (Rasterization)/stage2.txt
+Assignment 2 (Rasterization)/stage3.txt
