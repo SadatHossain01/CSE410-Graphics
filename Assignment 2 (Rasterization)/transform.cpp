@@ -4,6 +4,8 @@
 
 #include "vector.h"
 
+const double PI = 2 * acos(0.0);
+
 Matrix Transformation::generate_translation_matrix(double x, double y,
                                                    double z) {
   Matrix result = Matrix::identity(4);
@@ -68,8 +70,8 @@ Matrix Transformation::generate_projection_matrix(double fov_y,
                                                   double aspect_ratio,
                                                   double near, double far) {
   double fov_x = fov_y * aspect_ratio;
-  double t = near * tan(fov_y / 2);
-  double r = near * tan(fov_x / 2);
+  double t = near * tan(fov_y * PI / 360.0);
+  double r = near * tan(fov_x * PI / 360.0);
   Matrix projection(4, 4);
   projection.data[0][0] = near / r;
   projection.data[1][1] = near / t;

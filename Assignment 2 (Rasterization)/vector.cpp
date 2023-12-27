@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 const double EPS = 1e-6;
-const double PI = acos(-1.0 + EPS);
+const double PI = 2 * acos(0.0);
 
 Vector::Vector(double x, double y, double z) : x(x), y(y), z(z) {}
 

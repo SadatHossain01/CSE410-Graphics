@@ -61,19 +61,19 @@ int main(int argc, char** argv) {
       scene_file >> tx >> ty >> tz;
       Matrix translation_matrix =
           Transformation::generate_translation_matrix(tx, ty, tz);
-      s.top() = translation_matrix * s.top();
+      s.top() = s.top() * translation_matrix;
     } else if (command == "scale") {
       double sx, sy, sz;
       scene_file >> sx >> sy >> sz;
       Matrix scaling_matrix =
           Transformation::generate_scaling_matrix(sx, sy, sz);
-      s.top() = scaling_matrix * s.top();
+      s.top() = s.top() * scaling_matrix;
     } else if (command == "rotate") {
       double angle, rx, ry, rz;
       scene_file >> angle >> rx >> ry >> rz;
       Matrix rotation_matrix =
           Transformation::generate_rotation_matrix(rx, ry, rz, angle);
-      s.top() = rotation_matrix * s.top();
+      s.top() = s.top() * rotation_matrix;
     } else if (command == "push") {
       s.push(s.top());
     } else if (command == "pop") {
@@ -84,9 +84,6 @@ int main(int argc, char** argv) {
       std::cerr << "Invalid command: " << command << std::endl;
       return 1;
     }
-
-    std::cout << command << ":" << std::endl;
-    std::cout << s.top() << std::endl << std::endl;
   }
 
   // Stage 2 : Viewing Transformation
