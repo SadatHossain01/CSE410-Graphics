@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Delete existing output files
+:: Delete existing output files from the script's directory
 del "stage1.txt" "stage2.txt" "stage3.txt" "z_buffer.txt" "out.bmp" 2> nul
 
 :: Check for command line parameter
@@ -33,7 +33,7 @@ for /d %%i in ("%IOsDir%\*") do (
     set matched=true
 
     :: Compare each output file with the expected output
-    for %%f in (stage1.txt stage2.txt stage3.txt z_buffer.txt out.bmp) do (
+    for %%f in (stage1.txt stage2.txt stage3.txt z_buffer.txt) do (
         if exist "%%i\%%f" (
             fc /W "%%f" "%%i\%%f" > nul || (
                 echo Difference found in %%f:
@@ -44,6 +44,18 @@ for /d %%i in ("%IOsDir%\*") do (
             echo Expected output file %%f is missing in folder %%i.
             set matched=false
         )
+    )
+
+    :: Perform a binary comparison for the .bmp file
+    if exist "out.bmp" (
+        fc /B "out.bmp" "%%i\out.bmp" > nul || (
+            echo Difference found in out.bmp:
+            fc /B "out.bmp" "%%i\out.bmp"
+            set matched=false
+        )
+    ) else (
+        echo Expected output file out.bmp is missing in folder %%i.
+        set matched=false
     )
 
     :: Output the result
