@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < screen_height; i++) {
     for (int j = 0; j < screen_width; j++) {
       if (z_buffer[i][j] >= z_max) continue;
-      stage4_file << z_buffer[i][j] << " ";
+      stage4_file << z_buffer[i][j] << "\t";
     }
     stage4_file << std::endl;
   }
