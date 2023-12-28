@@ -1,8 +1,29 @@
 #include "triangle.h"
 
+#include <algorithm>
+
+static unsigned long long int g_seed = 1;
+inline int fastrand() {
+  g_seed = (214013 * g_seed + 2531011);
+  return (g_seed >> 16) & 0x7FFF;
+}
+
 Triangle::Triangle() {
   vertices.assign(3, Matrix(4, 1));
   for (Matrix& v : vertices) v.data[3][0] = 1;
+}
+
+void Triangle::set_random_colors() {
+  red = fastrand() % 256;
+  green = fastrand() % 256;
+  blue = fastrand() % 256;
+}
+
+void Triangle::reorder_vertices() {
+  std::sort(vertices.begin(), vertices.end(),
+            [](const Matrix& a, const Matrix& b) {
+              return a.data[1][0] > b.data[1][0];
+            });
 }
 
 Triangle::Triangle(const Vector& v1, const Vector& v2, const Vector& v3) {
