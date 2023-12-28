@@ -11,6 +11,8 @@
 #include "camera.h"
 #include "point3D.h"
 
+const double PI = 2 * acos(0.0);
+
 Camera camera(Point3D(5, 0, 2), Point3D(0, 0, 0), Vector(0, 0, 1));
 
 // Triangle
@@ -183,7 +185,7 @@ void draw_single_cylinder(double height, double radius, int segment_count) {
   std::vector<Point3D> points(segment_count + 1);
 
   const double dihedral_angle = acos(-1.0 / 3.0);
-  double offset = M_PI - dihedral_angle;
+  double offset = PI - dihedral_angle;
 
   for (int i = 0; i <= segment_count; i++) {
     // Point Generation

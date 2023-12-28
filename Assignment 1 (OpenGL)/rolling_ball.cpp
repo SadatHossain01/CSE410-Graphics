@@ -15,6 +15,7 @@ Ball ball;
 bool simulation_on = false;
 int n_walls;
 const double EPS = 1e-6;
+const double PI = 2 * acos(0.0);
 
 // Wall Constants
 const double wall_height = 10;
@@ -302,7 +303,7 @@ void handle_simulation(int value) {
     // typical ball movement
     ball.center += ball.dir_scalar_multiplier * ball.dir;
     double angle = 360 * (ball.dir.norm() * ball.dir_scalar_multiplier) /
-                   (2 * M_PI * ball.radius);
+                   (2 * PI * ball.radius);
     ball.rotate_ball_vertices(ball.right, -angle);
     glutTimerFunc(ball.dt, handle_simulation, 1);
   } else if (value == 2) {

@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cmath>
 const double EPS = 1e-6;
+const double PI = 2 * acos(0.0);
 
 Camera::Camera(const Point3D& eye, const Point3D& look_at,
                const Vector& up_vector) {
@@ -61,7 +62,7 @@ void Camera::move_up_same_ref() {
   double angle =
       acos((prev_dist * prev_dist + cur_dist * cur_dist - speed * speed) /
            (2 * prev_dist * cur_dist));
-  angle = 180 * angle / M_PI;
+  angle = 180 * angle / PI;
   look = look.rotate(right, -angle);
   up = up.rotate(right, -angle);
   right = look.cross(up).normalize();
@@ -75,7 +76,7 @@ void Camera::move_down_same_ref() {
   double angle =
       acos((prev_dist * prev_dist + cur_dist * cur_dist - speed * speed) /
            (2 * prev_dist * cur_dist));
-  angle = 180 * angle / M_PI;
+  angle = 180 * angle / PI;
   look = look.rotate(right, angle);
   up = up.rotate(right, angle);
   right = look.cross(up).normalize();

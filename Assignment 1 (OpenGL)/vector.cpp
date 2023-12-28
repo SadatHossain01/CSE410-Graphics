@@ -4,6 +4,7 @@
 #include <cmath>
 
 const double EPS = 1e-6;
+const double PI = 2 * acos(0.0);
 
 Vector::Vector(double x, double y, double z) : x(x), y(y), z(z) {}
 
@@ -68,7 +69,7 @@ bool Vector::check_orthogonal(const Vector& v) const {
 Vector Vector::rotate(const Vector& axis, double angle) const {
   // Rodrigues' Rotation Formula
   // https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
-  double theta = angle * M_PI / 180;
+  double theta = angle * PI / 180;
   Vector k = axis.normalize();
   Vector v1 = *this * cos(theta);
   Vector v2 = k.cross(*this) * sin(theta);

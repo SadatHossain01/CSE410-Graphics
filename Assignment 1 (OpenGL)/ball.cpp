@@ -6,10 +6,11 @@
 
 const double INF = 1e9;
 const double EPS = 1e-6;
+const double PI = 2 * acos(0.0);
 
 Ball::Ball(double radius, int sector_count, int stack_count)
     : radius(radius), sector_count(sector_count), stack_count(stack_count) {
-  dir_rotation_angle = dir_scalar_multiplier * 180 / (radius * M_PI);
+  dir_rotation_angle = dir_scalar_multiplier * 180 / (radius * PI);
   dir = Vector(1, 1, 0).normalize();
   up = Vector(0, 0, 1).normalize();
   right = dir.cross(up);
@@ -19,10 +20,10 @@ Ball::Ball(double radius, int sector_count, int stack_count)
 
 // Vertices are computed here considering the origin (0, 0, 0) as the center
 void Ball::compute_vertices() {
-  double stack_step = M_PI / stack_count;
-  double sector_step = 2 * M_PI / sector_count;
+  double stack_step = PI / stack_count;
+  double sector_step = 2 * PI / sector_count;
   for (int i = 0; i <= stack_count; i++) {
-    double stack_angle = M_PI / 2.0 - i * stack_step;  // range pi/2 to -pi/2
+    double stack_angle = PI / 2.0 - i * stack_step;  // range pi/2 to -pi/2
     for (int j = 0; j <= sector_count; j++) {
       double sector_angle = j * sector_step;  // range 0 to 2pi
 
@@ -41,7 +42,7 @@ void Ball::go_forward() {
   Point3D temp = center + dir_scalar_multiplier * dir;
   if (is_ball_inside_box(temp, radius, box_vertices)) {
     center = temp;
-    double angle = 360 * usual_dist_change / (2 * M_PI * radius);
+    double angle = 360 * usual_dist_change / (2 * PI * radius);
     rotate_ball_vertices(right, -angle);
   } else {
     // collision will happen
@@ -58,7 +59,7 @@ void Ball::go_forward() {
     center +=
         (dist_to_collision / usual_dist_change) * dir_scalar_multiplier * dir;
 
-    double angle = 360 * dist_to_collision / (2 * M_PI * radius);
+    double angle = 360 * dist_to_collision / (2 * PI * radius);
     rotate_ball_vertices(right, -angle);
 
     // now collision has taken place
@@ -71,7 +72,7 @@ void Ball::go_forward() {
     double fraction =
         fabs(usual_dist_change - dist_to_collision) / usual_dist_change;
     center += fraction * dir_scalar_multiplier * dir;
-    angle = 360 * fraction * usual_dist_change / (2 * M_PI * radius);
+    angle = 360 * fraction * usual_dist_change / (2 * PI * radius);
     rotate_ball_vertices(right, -angle);
   }
 }
