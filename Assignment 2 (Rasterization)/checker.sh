@@ -10,7 +10,7 @@ fi
 IOsDir="$1"
 
 # Compile the program
-g++ -std=c++14 -O3 main.cpp -o main.exe vector.cpp matrix.cpp transform.cpp triangle.cpp
+g++ -std=c++14 -O3 main.cpp -o main.exe vector.cpp matrix.cpp transform.cpp triangle.cpp line.cpp
 
 # Check if compilation was successful
 if [ ! -f main.exe ]; then

@@ -3,9 +3,8 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
-
-const double EPS = 1e-8;
 
 Matrix::Matrix(int row, int col) {
   this->row = row;
@@ -97,7 +96,7 @@ Matrix Matrix::operator*=(double scalar) {
 }
 
 Matrix Matrix::operator/(double scalar) const {
-  if (std::fabs(scalar) < EPS)
+  if (std::fabs(scalar) <= std::numeric_limits<double>::epsilon())
     throw std::invalid_argument("Scalar must not be zero");
   Matrix result(this->row, this->col);
   for (int i = 0; i < this->row; i++) {
@@ -109,7 +108,7 @@ Matrix Matrix::operator/(double scalar) const {
 }
 
 Matrix Matrix::operator/=(double scalar) {
-  if (std::fabs(scalar) < EPS)
+  if (std::fabs(scalar) <= std::numeric_limits<double>::epsilon())
     throw std::invalid_argument("Scalar must not be zero");
   *this = *this / scalar;
   return *this;
@@ -155,7 +154,7 @@ Matrix Matrix::inverse() const {
   if (this->row != this->col)
     throw std::invalid_argument("Matrix must be square");
   double det = this->determinant();
-  if (std::fabs(det) < EPS)
+  if (std::fabs(det) <= std::numeric_limits<double>::epsilon())
     throw std::invalid_argument("Matrix must be invertible");
   Matrix result(this->row, this->col);
   for (int i = 0; i < this->row; i++) {

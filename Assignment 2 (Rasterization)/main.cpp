@@ -5,8 +5,10 @@
 #include <iostream>
 #include <stack>
 #include <string>
+#include <tuple>
 
 #include "bitmap_image.hpp"
+#include "line.h"
 #include "matrix.h"
 #include "transform.h"
 #include "triangle.h"
@@ -19,6 +21,26 @@ double fov_y, aspect_ratio, near, far;
 double screen_width, screen_height;
 
 std::vector<Triangle> triangles;
+
+// Function Declarations
+std::pair<bool, Point> check_line_segment_intersection(const Line& line,
+                                                       Line segment);
+bool is_equal(double a, double b);
+
+// Function Definitions
+std::pair<bool, Point> check_line_segment_intersection(const Line& line,
+                                                       Line segment) {
+  std::pair<bool, Point> intersection_point =
+      line.get_intersection_point(segment);
+  if (!intersection_point.first) return intersection_point;
+  if (segment.p0.x > segment.p1.x) std::swap(segment.p0, segment.p1);
+  intersection_point.first = intersection_point.second.x >= segment.p0.x &&
+                             intersection_point.second.x <= segment.p1.x;
+  return intersection_point;
+}
+bool is_equal(double a, double b) {
+  return fabs(a - b) <= std::numeric_limits<double>::epsilon();
+}
 
 int main(int argc, char** argv) {
   // input files
@@ -154,6 +176,12 @@ int main(int argc, char** argv) {
         Vector(triangle.vertices[2].data[0][0], triangle.vertices[2].data[1][0],
                triangle.vertices[2].data[2][0]);
 
+    // the three edges of the triangle
+    // taking z = 0 plane as the projection plane (xy plane)
+    Line l1 = Line(Point(a.x, a.y, 0), Point(b.x, b.y, 0));
+    Line l2 = Line(Point(a.x, a.y, 0), Point(c.x, c.y, 0));
+    Line l3 = Line(Point(b.x, b.y, 0), Point(c.x, c.y, 0));
+
     double bottom_scanline = std::max(c.y, bottom_y);
     double top_scanline = std::min(a.y, top_y);
 
@@ -162,10 +190,102 @@ int main(int argc, char** argv) {
 
     for (int i = top_row; i >= bottom_row; i--) {
       double y_s = bottom_y + i * dy;
+
+      Line current_line = Line(Point(0, y_s, 0), Point(1, y_s, 0));
+
+      std::pair<bool, Point> l1_intersection =
+          check_line_segment_intersection(current_line, l1);
+      std::pair<bool, Point> l2_intersection =
+          check_line_segment_intersection(current_line, l2);
+      std::pair<bool, Point> l3_intersection =
+          check_line_segment_intersection(current_line, l3);
+
+      l1_intersection.first = l1_intersection.first &&
+                              l1_intersection.second.x >= left_limit &&
+                              l1_intersection.second.x <= right_limit;
+      l2_intersection.first = l2_intersection.first &&
+                              l2_intersection.second.x >= left_limit &&
+                              l2_intersection.second.x <= right_limit;
+      l3_intersection.first = l3_intersection.first &&
+                              l3_intersection.second.x >= left_limit &&
+                              l3_intersection.second.x <= right_limit;
+
+      // declare a lambda function to reorder the points and lines
+      // according to the intersection points
+      auto reorder_points_and_lines = [&](const std::string& order) {
+        if (order == "abc") {
+          // keep things as they are
+        } else if (order == "bac") {
+          std::tie(a, b, c) = std::make_tuple(b, a, c);
+          std::tie(l1, l2, l3) = std::make_tuple(l1, l3, l2);
+          std::tie(l1_intersection, l2_intersection, l3_intersection) =
+              std::make_tuple(l1_intersection, l3_intersection,
+                              l2_intersection);
+        } else if (order == "cab") {
+          std::tie(a, b, c) = std::make_tuple(c, a, b);
+          std::tie(l1, l2, l3) = std::make_tuple(l2, l3, l1);
+          std::tie(l1_intersection, l2_intersection, l3_intersection) =
+              std::make_tuple(l2_intersection, l3_intersection,
+                              l1_intersection);
+        }
+      };
+
+      if (!l1_intersection.first && !l2_intersection.first &&
+          !l3_intersection.first) {
+        // current line does not intersect with any of the edges
+        // the closest two lines should be l1, l2
+        double d1 = current_line.get_distance_from_point(Point(a.x, a.y, 0));
+        double d2 = current_line.get_distance_from_point(Point(b.x, b.y, 0));
+        double d3 = current_line.get_distance_from_point(Point(c.x, c.y, 0));
+
+        if (d2 <= d1 && d2 <= d3)
+          reorder_points_and_lines("bac");
+        else if (d3 <= d1 && d3 <= d2)
+          reorder_points_and_lines("cab");
+      } else if (!l1_intersection.first) {
+        // line (a, b) does not intersect with current line
+        // so lines (b, c) and (c, a) intersect with current_line
+        // point ordering should be: c, b, a
+        // line ordering should be: l3, l2, l1
+        reorder_points_and_lines("cab");
+      } else if (!l2_intersection.first) {
+        // line (a, c) does not intersect with current line
+        // so lines (b, c) and (a, b) intersect with current_line
+        // point ordering should be: b, a, c
+        // line ordering should be: l1, l3, l2
+        reorder_points_and_lines("bac");
+      }
+
       double x_a = a.x - (a.x - b.x) * (a.y - y_s) / (a.y - b.y);
       double x_b = a.x - (a.x - c.x) * (a.y - y_s) / (a.y - c.y);
+      // double x_a = l1_intersection.second.x;
+      // double x_b = l2_intersection.second.x;
       double z_a = a.z - (a.z - b.z) * (a.y - y_s) / (a.y - b.y);
       double z_b = a.z - (a.z - c.z) * (a.y - y_s) / (a.y - c.y);
+
+      bool xa_agrees_with_l1 = is_equal(x_a, l1_intersection.second.x);
+      bool xb_agrees_with_l2 = is_equal(x_b, l2_intersection.second.x);
+
+      if (!xa_agrees_with_l1 || !xb_agrees_with_l2) {
+        std::cerr << "Booleans: " << l1_intersection.first << " "
+                  << l2_intersection.first << " " << l3_intersection.first
+                  << std::endl;
+        std::cerr << "y_s: " << y_s << " x_a: " << x_a << " x_b: " << x_b
+                  << std::endl;
+        std::cerr << "A: " << l1.p0 << " B: " << l1.p1 << " C: " << l2.p1
+                  << std::endl;
+        if (!xa_agrees_with_l1) {
+          std::cerr << "x_a mismatch " << l1_intersection.second << std::endl;
+        }
+        if (!xb_agrees_with_l2) {
+          std::cerr << "x_b mismatch " << l2_intersection.second << std::endl;
+        }
+      }
+
+      if (x_a > x_b) {
+        std::swap(x_a, x_b);
+        std::swap(z_a, z_b);
+      }
 
       x_a = std::max(x_a, left_x);
       x_b = std::min(x_b, right_x);

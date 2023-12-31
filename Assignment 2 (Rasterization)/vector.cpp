@@ -2,9 +2,9 @@
 
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
-const double EPS = 1e-6;
 const double PI = 2 * acos(0.0);
 
 Vector::Vector(double x, double y, double z) : x(x), y(y), z(z) {}
@@ -41,12 +41,14 @@ Vector Vector::operator*=(const double& d) {
 }
 
 Vector Vector::operator/(const double& d) const {
-  if (fabs(d) < EPS) throw std::invalid_argument("Division by zero");
+  if (fabs(d) <= std::numeric_limits<double>::epsilon())
+    throw std::invalid_argument("Division by zero");
   return Vector(x / d, y / d, z / d);
 }
 
 Vector Vector::operator/=(const double& d) {
-  if (fabs(d) < EPS) throw std::invalid_argument("Division by zero");
+  if (fabs(d) <= std::numeric_limits<double>::epsilon())
+    throw std::invalid_argument("Division by zero");
   x /= d, y /= d, z /= d;
   return *this;
 }
@@ -61,7 +63,8 @@ Vector Vector::cross(const Vector& v) const {
 
 Vector Vector::normalize() const {
   double length = sqrt(x * x + y * y + z * z);
-  if (fabs(length) < EPS) throw std::invalid_argument("Vector magnitude is 0");
+  if (fabs(length) <= std::numeric_limits<double>::epsilon())
+    throw std::invalid_argument("Vector magnitude is 0");
   return Vector(x / length, y / length, z / length);
 }
 
@@ -85,11 +88,11 @@ Vector Vector::get_reflection(const Vector& normal) const {
 
 bool Vector::check_normalized() const {
   double length = sqrt(x * x + y * y + z * z);
-  return fabs(length - 1) < EPS;
+  return fabs(length - 1) <= std::numeric_limits<double>::epsilon();
 }
 
 bool Vector::check_orthogonal(const Vector& v) const {
-  return fabs(this->dot(v)) < EPS;
+  return fabs(this->dot(v)) <= std::numeric_limits<double>::epsilon();
 }
 
 double Vector::norm() const { return sqrt(x * x + y * y + z * z); }
@@ -100,6 +103,7 @@ std::istream& operator>>(std::istream& is, Vector& v) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Vector& v) {
-  os << v.x << " " << v.y << " " << v.z;
+  // os << v.x << " " << v.y << " " << v.z;
+  os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
   return os;
 }
