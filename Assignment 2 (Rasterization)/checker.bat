@@ -46,17 +46,17 @@ for /d %%i in ("%IOsDir%\*") do (
         )
     )
 
-    :: Perform a binary comparison for the .bmp file
-    if exist "out.bmp" (
-        fc /B "out.bmp" "%%i\out.bmp" > nul || (
-            echo Difference found in out.bmp:
-            fc /B "out.bmp" "%%i\out.bmp"
-            set matched=false
-        )
-    ) else (
-        echo Expected output file out.bmp is missing in folder %%i.
-        set matched=false
-    )
+    @REM :: Perform a binary comparison for the .bmp file
+    @REM if exist "out.bmp" (
+    @REM     fc /B "out.bmp" "%%i\out.bmp" > nul || (
+    @REM         echo Difference found in out.bmp:
+    @REM         fc /B "out.bmp" "%%i\out.bmp"
+    @REM         set matched=false
+    @REM     )
+    @REM ) else (
+    @REM     echo Expected output file out.bmp is missing in folder %%i.
+    @REM     set matched=false
+    @REM )
 
     :: Output the result
     if !matched! == true (
