@@ -8,30 +8,22 @@ Line::Line(Point3D p0, Point3D p1) : p0(p0), p1(p1) {
 
 Line::Line(Point3D p0, Vector dir) : p0(p0), dir(dir) { p1 = p0 + dir; }
 
+// https://www.songho.ca/math/line/line.html
 std::pair<bool, Point3D> Line::get_intersection_point(const Line& l) {
-  /*
-    p0.x + t * dir.x = l.p0.x + s * l.dir.x
-    p0.y + t * dir.y = l.p0.y + s * l.dir.y
-    p0.z + t * dir.z = l.p0.z + s * l.dir.z
-    We can solve for t and s using Cramer's rule, considering the first two
-    equations
-  */
-  /*
-    a1 * t + b1 * s + c1 = 0
-    a2 * t + b2 * s + c2 = 0
-  */
-  double a1, b1, c1, a2, b2, c2;
-  std::tie(a1, b1, c1) = std::make_tuple(dir.x, -l.dir.x, p0.x - l.p0.x);
-  std::tie(a2, b2, c2) = std::make_tuple(dir.y, -l.dir.y, p0.y - l.p0.y);
+  Vector vec = dir.cross(l.dir);  // this->dir x l.dir
 
-  double det = a1 * b2 - a2 * b1;
-  if (fabs(det) < 1e-6) return std::make_pair(false, Point3D());
+  double res = vec.dot(vec);  // |vec|^2
+  if (fabs(res) < 1e-6) {
+    // |this->dir x l.dir| = 0, so this->dir and l.dir are parallel
+    return std::make_pair(false, Point3D());
+  }
 
-  double t = (b1 * c2 - b2 * c1) / det;
-  double s = (a2 * c1 - a1 * c2) / det;
+  Vector w = Vector(l.p0.x - p0.x, l.p0.y - p0.y, l.p0.z - p0.z);
+  Vector u = w.cross(l.dir);
+  double t = u.dot(vec) / res;
 
-  Point3D intersection_point = p0 + Point3D(dir.x * t, dir.y * t, dir.z * t);
-  return std::make_pair(true, intersection_point);
+  Point3D p = Point3D(p0.x + t * dir.x, p0.y + t * dir.y, p0.z + t * dir.z);
+  return std::make_pair(true, p);
 }
 
 // https://youtu.be/Uf_nDXzs2EA
