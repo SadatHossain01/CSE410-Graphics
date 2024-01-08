@@ -192,8 +192,8 @@ int main(int argc, char** argv) {
     double bottom_scanline = std::max(c.y, bottom_y);
     double top_scanline = std::min(a.y, top_y);
 
-    int top_row = floor((top_scanline - bottom_y) / dy);
-    int bottom_row = ceil((bottom_scanline - bottom_y) / dy);
+    int top_row = round((top_scanline - bottom_y) / dy);
+    int bottom_row = round((bottom_scanline - bottom_y) / dy);
 
     for (int i = top_row; i >= bottom_row; i--) {
       double y_s = bottom_y + i * dy;
@@ -230,10 +230,8 @@ int main(int argc, char** argv) {
                               l1_intersection);
         }
       };
-
-      if (intersection_count == 3) {
-        // std::cerr << "should not happen\n";
-      } else if (intersection_count == 2) {
+      if (intersection_count == 0) continue;
+      if (intersection_count == 2) {
         reorder_points_and_lines(l1_intersection.first
                                      ? (l2_intersection.first ? "abc" : "bac")
                                      : "cab");
