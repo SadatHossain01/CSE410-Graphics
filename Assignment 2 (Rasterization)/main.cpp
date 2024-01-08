@@ -192,8 +192,8 @@ int main(int argc, char** argv) {
     double bottom_scanline = std::max(c.y, bottom_y);
     double top_scanline = std::min(a.y, top_y);
 
-    int top_row = round((top_scanline - bottom_y) / dy);
-    int bottom_row = round((bottom_scanline - bottom_y) / dy);
+    int top_row = floor((top_scanline - bottom_y) / dy);
+    int bottom_row = ceil((bottom_scanline - bottom_y) / dy);
 
     for (int i = top_row; i >= bottom_row; i--) {
       double y_s = bottom_y + i * dy;
@@ -207,18 +207,10 @@ int main(int argc, char** argv) {
       std::pair<bool, Point> l3_intersection =
           check_line_segment_intersection(current_line, l3);
 
-      l1_intersection.first = l1_intersection.first &&
-                              l1_intersection.second.x >= left_limit &&
-                              l1_intersection.second.x <= right_limit;
-      l2_intersection.first = l2_intersection.first &&
-                              l2_intersection.second.x >= left_limit &&
-                              l2_intersection.second.x <= right_limit;
-      l3_intersection.first = l3_intersection.first &&
-                              l3_intersection.second.x >= left_limit &&
-                              l3_intersection.second.x <= right_limit;
-
       int intersection_count =
           l1_intersection.first + l2_intersection.first + l3_intersection.first;
+
+      // if (intersection_count == 3) std::cerr << "should not happen\n";
 
       auto reorder_points_and_lines = [&](std::string order) {
         if (order[1] > order[2]) std::swap(order[1], order[2]);
@@ -242,14 +234,10 @@ int main(int argc, char** argv) {
       if (intersection_count == 3) {
         // std::cerr << "should not happen\n";
       } else if (intersection_count == 2) {
-        if (!l1_intersection.first)
-          reorder_points_and_lines("cab");
-        else if (!l2_intersection.first)
-          reorder_points_and_lines("bac");
+        reorder_points_and_lines(l1_intersection.first
+                                     ? (l2_intersection.first ? "abc" : "bac")
+                                     : "cab");
       }
-      // else {
-      //   std::cerr << "may happen " << intersection_count << std::endl;
-      // }
 
       // double x_a = a.x - (a.x - b.x) * (a.y - y_s) / (a.y - b.y);
       // double x_b = a.x - (a.x - c.x) * (a.y - y_s) / (a.y - c.y);
