@@ -100,6 +100,7 @@ void draw_sphere_quads(double radius, int stack_count, int sector_count) {
       // taking z = 1 only to get the top quad
       points[i][j].z = 1;
 
+      // if we didn't do the following, it would generate a cube of side 2
       points[i][j] *= radius / sqrt(points[i][j].x * points[i][j].x +
                                     points[i][j].y * points[i][j].y +
                                     points[i][j].z * points[i][j].z);
@@ -122,7 +123,8 @@ void draw_sphere_quads(double radius, int stack_count, int sector_count) {
 }
 
 void draw_spheres() {
-  // 4 spheres along x and y axis
+  // total 6 sphere quads
+  // 4 sphere-quads along x and y axis
   // even index: green, along the y axis
   // odd index: blue, along the x axis
   for (int i = 0; i < 4; i++) {
@@ -130,27 +132,28 @@ void draw_spheres() {
     {
       // blue or green depending on i
       if (i % 2) {
-        // blue
+        // blue: along x axis
         glColor3f(0, 0, 1);
         glRotatef(i * 90, 0, 1, 0);
       } else {
-        // green
+        // green: along y axis
         glColor3f(0, 1, 0);
         glRotatef(90 + i * 90, 1, 0, 0);
       }
-      // prior to this rotation, the quad is at the +ve end of z axis,
-      // rotating it along z axis would do nothing
+      // prior to this rotation, the quad is at the +ve end of z axis at z = 1
+      // prolly, rotating it along z axis would do nothing
       glTranslatef(0, 0, triangle_length);
       draw_sphere_quads(sphere_radius, 100, 100);
     }
     glPopMatrix();
   }
-  // the top and bottom two spheres along the z axis
+  // // the top and bottom two sphere-quads along the z axis
   for (int i = 0; i < 2; i++) {
     glPushMatrix();
     {
       glColor3f(1, 0, 0);  // red
-      glRotatef(180 * i, 0, 1, 0);
+      glRotatef(180 * i, 0, 1,
+                0);  // should work with glRotatef(180, 1, 0, 0) as well
       glTranslatef(0, 0, triangle_length);
       draw_sphere_quads(sphere_radius, 100, 100);
     }
@@ -163,6 +166,10 @@ void draw_octahedron() {
 
   // 0 to 3: top 4 pyramids (to the side of +ve z axis)
   // 4 to 7: bottom 4 pyramids (to the side of -ve z axis)
+  // say you run the loop from 0 to 4, you won't see the bottom pyramids
+  // but you will still see the pyramid borders (cylinders)
+  // the original triangle is at the joint of x and y axis, so we do 90 degree
+  // rotation wrt z axis for the next 3 pyramids to spread them out
   for (int i = 0; i < 8; i++) {
     int idx = i % 4;
     glPushMatrix();
@@ -172,7 +179,10 @@ void draw_octahedron() {
       else
         glColor3f(i % 2, 1 - (i % 2), 1);
       glRotatef(idx * 90, 0, 0, 1);
-      if (i >= 4) glRotatef(180, 1, 1, 0);  // for rotating upside down
+      // for rotating upside down
+      // since the traiangles are slanted at 45 degrees, we need to rotate them
+      // wrt two axes, not just one
+      if (i >= 4) glRotatef(180, 1, 1, 0);
       glTranslatef(diff, diff, diff);
       glScaled(triangle_length, triangle_length, triangle_length);
       draw_triangle(Point3D(1, 0, 0), Point3D(0, 1, 0), Point3D(0, 0, 1));
@@ -221,6 +231,7 @@ void draw_cylinders() {
       else if (i >= 8)
         glRotatef(90, 0, 0, 1);
       glRotatef(45 + idx * 90, 0, 1, 0);
+      // up until this point, the cylinder is vertically standing on the x axis
       glTranslatef(triangle_length / sqrt(2.0), 0, 0);
       draw_single_cylinder(triangle_length * sqrt(2.0), sphere_radius, 100);
     }
@@ -247,11 +258,7 @@ void display() {
   glutSwapBuffers();
 }
 
-void idle() {
-  // printf("Camera: (%lf, %lf, %lf)\n", camera.pos.x, camera.pos.y,
-  // camera.pos.z);
-  glutPostRedisplay();
-}
+void idle() { glutPostRedisplay(); }
 
 void handle_keys(unsigned char key, int x, int y) {
   switch (key) {
