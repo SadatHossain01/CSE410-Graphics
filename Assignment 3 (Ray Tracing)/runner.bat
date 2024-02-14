@@ -1,0 +1,1 @@
+g++ %1 -o demo.exe  -lfreeglut -lglew32 -lopengl32 -lglu32 1905001_classes.cpp && .\demo.exe
