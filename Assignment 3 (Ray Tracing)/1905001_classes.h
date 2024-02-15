@@ -5,8 +5,11 @@
 #include <bits/stdc++.h>
 
 // Forward Declarations
+struct Color;
+struct PhongCoefficients;
 struct Vector;
 struct Camera;
+struct Ray;
 class Object;
 class Sphere;
 class Triangle;
@@ -14,6 +17,24 @@ class GeneralQuadraticSurface;
 class Floor;
 class PointLight;
 class SpotLight;
+
+const double PI = 2 * acos(0.0);
+const double EPS = 1e-8;
+
+struct Color {
+   public:
+    double r, g, b;
+    Color(double r = 0, double g = 0, double b = 0);
+};
+
+struct PhongCoefficients {
+   public:
+    double ambient, diffuse, specular, reflection;
+    int shine;
+    PhongCoefficients(double ambient = 0, double diffuse = 0,
+                      double specular = 0, double reflection = 0,
+                      int shine = 0);
+};
 
 struct Vector {
    public:
@@ -50,7 +71,7 @@ struct Camera {
     Vector up, right, look;  // normalized vectors
 
     Camera(const Vector& pos = Vector(5, 5, 5),
-           const Vector& obj = Vector(0, 0, 0),
+           const Vector& look_at = Vector(0, 0, 0),
            const Vector& up = Vector(0, 0, 1), double speed = 2,
            double rotation_speed = 0.5);
     void move_forward();
@@ -71,18 +92,23 @@ struct Camera {
     void move_down_same_ref();
 };
 
+struct Ray {
+   public:
+    Vector start, dir;
+    Ray(const Vector& start, const Vector& dir);
+};
+
 class Object {
    protected:
     Vector reference_point;
-    double color[3];      // red, green, blue
-    double
-        coefficients[4];  // ambient, diffuse, specular, reflection coefficients
-    int shine;            // exponent term of specular component
+    Color color;
+    PhongCoefficients phong_coefficients;
 
    public:
     Object(const Vector& ref = Vector(0, 0, 0));
     ~Object();
-    virtual void draw() {}
+    virtual void draw() = 0;
+    virtual double intersect(const Ray& ray, const Color& color, int level);
     void set_color(double r, double g, double b);
     void set_shine(int shine);
     void set_coefficients(double ambient, double diffuse, double specular,
@@ -131,7 +157,7 @@ class GeneralQuadraticSurface : public Object {
 class PointLight {
    protected:
     Vector light_position;  // position of the light source
-    double color[3];        // red, green, blue
+    Color color;
 
    public:
     PointLight(const Vector& pos, double r, double g, double b);

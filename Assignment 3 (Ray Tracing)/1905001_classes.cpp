@@ -1,10 +1,19 @@
 #include "1905001_classes.h"
 
-const double PI = 2 * acos(0.0);
-const double EPS = 1e-8;
+// Color
+Color::Color(double r, double g, double b) : r(r), g(g), b(b) {}
+
+// Phong Coefficients
+PhongCoefficients::PhongCoefficients(double ambient, double diffuse,
+                                     double specular, double reflection,
+                                     int shine)
+    : ambient(ambient),
+      diffuse(diffuse),
+      specular(specular),
+      reflection(reflection),
+      shine(shine) {}
 
 // Vector
-
 Vector::Vector(double x, double y, double z) : x(x), y(y), z(z) {}
 
 Vector Vector::operator+(const Vector& v) const {
@@ -98,7 +107,6 @@ std::ostream& operator<<(std::ostream& os, const Vector& v) {
 }
 
 // Camera
-
 Camera::Camera(const Vector& eye, const Vector& look_at,
                const Vector& up_vector, double speed, double rotation_speed) {
     this->speed = speed;
@@ -173,16 +181,20 @@ void Camera::move_down_same_ref() {
     right = look.cross(up).normalize();
 }
 
+// Ray
+Ray::Ray(const Vector& start, const Vector& dir) : start(start), dir(dir) {}
+
 // Object
 Object::Object(const Vector& ref) : reference_point(ref) {}
-void Object::set_color(double r, double g, double b) {
-    color[0] = r, color[1] = g, color[2] = b;
-}
-void Object::set_shine(int shine) { this->shine = shine; }
+void Object::set_color(double r, double g, double b) { color = Color(r, g, b); }
+void Object::set_shine(int shine) { phong_coefficients.shine = shine; }
 void Object::set_coefficients(double ambient, double diffuse, double specular,
                               double reflection) {
-    coefficients[0] = ambient, coefficients[1] = diffuse;
-    coefficients[2] = specular, coefficients[3] = reflection;
+    phong_coefficients = PhongCoefficients(
+        ambient, diffuse, specular, reflection, phong_coefficients.shine);
+}
+double Object::intersect(const Ray& ray, const Color& color, int level) {
+    return -1.0;
 }
 Object::~Object() {}
 
@@ -214,15 +226,18 @@ void Floor::draw() {
 Sphere::Sphere(const Vector& center, double radius)
     : Object(center), radius(radius) {}
 void Sphere::draw() {
-    glColor3f(this->color[0], this->color[1], this->color[2]);
+    glColor3f(color.r, color.g, color.b);
+    glPushMatrix();
+    glTranslatef(reference_point.x, reference_point.y, reference_point.z);
     draw_sphere(radius, 25, 25);
+    glPopMatrix();
 }
 
 // Triangle
 Triangle::Triangle(const Vector& a, const Vector& b, const Vector& c)
     : a(a), b(b), c(c) {}
 void Triangle::draw() {
-    glColor3f(this->color[0], this->color[1], this->color[2]);
+    glColor3f(color.r, color.g, color.b);
     draw_triangle(a, b, c);
 }
 

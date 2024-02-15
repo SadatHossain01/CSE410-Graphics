@@ -6,11 +6,15 @@
 #include <bits/stdc++.h>
 
 #include "1905001_classes.h"
+#include "bitmap_image.hpp"
 
 int reflection_depth;
-int screen_width, screen_height;
+int window_width = 1284, window_height = 768;
+int image_width, image_height;
+double view_angle = 80;  // in degrees
+int captured_images;
 
-Camera camera(Vector(20, 20, 20), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
+Camera camera(Vector(125, 125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
 std::vector<Object *> objects;
 std::vector<PointLight *> point_lights;
 std::vector<SpotLight *> spot_lights;
@@ -22,6 +26,7 @@ void idle();
 void handle_keys(unsigned char key, int x, int y);
 void handle_special_keys(int key, int x, int y);
 void load_data(const std::string &filename);
+void capture();
 void free_memory();
 
 void init() {
@@ -33,7 +38,56 @@ void init() {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    gluPerspective(80, 1, 1, 1000.0);
+    gluPerspective(view_angle, 1, 1, 1000.0);
+}
+
+void capture() {
+    const int image_width = 500, image_height = 500;
+    bitmap_image image(image_width, image_height);
+    image.set_all_channels(0, 0, 0);
+
+    // plane_distance is the distance from the camera to the image plane
+    double plane_distance =
+        (window_height / 2.0) / tan(view_angle * PI / 360.0);
+    Vector top_left = camera.pos + plane_distance * camera.look -
+                      (window_width / 2.0) * camera.right +
+                      (window_height / 2.0) * camera.up;
+    double du = window_width / (double)image_width;
+    double dv = window_height / (double)image_height;
+
+    // Choose middle of the grid cell
+    top_left += 0.5 * du * camera.right - 0.5 * dv * camera.up;
+
+    int nearest_idx = -1;
+    double t_min = 1e9;
+
+    for (int i = 0; i < image_width; i++) {
+        for (int j = 0; j < image_height; j++) {
+            // Calculate current pixel
+            Vector cur_pixel =
+                top_left + i * du * camera.right - j * dv * camera.up;
+
+            // Cast ray from eye to pixel direction
+            Ray ray(camera.pos, cur_pixel - camera.pos);
+            Color color;
+            for (int i = 0; i < objects.size(); i++) {
+                Object *o = objects[i];
+                double t = o->intersect(ray, color, 0);
+                if (t > 0 && (nearest_idx == -1 || t < t_min)) {
+                    t_min = t;
+                    nearest_idx = i;
+                }
+            }
+
+            if (nearest_idx != -1) {
+                t_min = objects[nearest_idx]->intersect(ray, color, 1);
+                image.set_pixel(j, i, color.r, color.g, color.b);
+            }
+        }
+    }
+
+    image.save_image("Output_" + std::to_string(10 + ++captured_images) +
+                     ".bmp");
 }
 
 void free_memory() {
@@ -51,11 +105,10 @@ void load_data(const std::string &filename) {
 
     int pixel;
     file >> reflection_depth >> pixel;
-    screen_width = screen_height = pixel;
+    image_width = image_height = pixel;
 
     int num_objects;
     file >> num_objects;
-    std::cout << "Num: " << num_objects << std::endl;
 
     for (int i = 0; i < num_objects; i++) {
         std::string type;
@@ -177,6 +230,9 @@ void idle() { glutPostRedisplay(); }
 
 void handle_keys(unsigned char key, int x, int y) {
     switch (key) {
+        case '0':
+            capture();
+            break;
         case '1':
             camera.look_left();
             break;
@@ -200,6 +256,10 @@ void handle_keys(unsigned char key, int x, int y) {
             break;
         case 's':
             camera.move_down_same_ref();
+            break;
+        case 'p':
+            printf("Camera Position: (%.2lf, %.2lf, %.2lf)\n", camera.pos.x,
+                   camera.pos.y, camera.pos.z);
             break;
         default:
             printf("Unknown key pressed\n");
@@ -235,7 +295,7 @@ void handle_special_keys(int key, int x, int y) {
 
 int main(int argc, char **argv) {
     glutInit(&argc, argv);
-    glutInitWindowSize(screen_width, screen_height);
+    glutInitWindowSize(window_width, window_height);
     glutInitWindowPosition(100, 100);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutCreateWindow("Ray Tracing");
