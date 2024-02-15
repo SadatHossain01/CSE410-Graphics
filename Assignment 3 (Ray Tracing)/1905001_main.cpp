@@ -55,6 +55,7 @@ void load_data(const std::string &filename) {
 
     int num_objects;
     file >> num_objects;
+    std::cout << "Num: " << num_objects << std::endl;
 
     for (int i = 0; i < num_objects; i++) {
         std::string type;
@@ -168,7 +169,7 @@ void display() {
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
 
-    objects.back()->draw();
+    for (auto &they : objects) they->draw();
     glutSwapBuffers();
 }
 

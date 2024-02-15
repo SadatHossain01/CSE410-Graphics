@@ -4,11 +4,9 @@
 #include <GL/glut.h>
 #include <bits/stdc++.h>
 
-#include <iostream>
-
 // Forward Declarations
-class Vector;
-class Camera;
+struct Vector;
+struct Camera;
 class Object;
 class Sphere;
 class Triangle;
@@ -17,7 +15,7 @@ class Floor;
 class PointLight;
 class SpotLight;
 
-class Vector {
+struct Vector {
    public:
     double x, y, z;
     Vector(double x = 0, double y = 0, double z = 0);
@@ -44,7 +42,7 @@ class Vector {
     friend std::ostream& operator<<(std::ostream& os, const Vector& v);
 };
 
-class Camera {
+struct Camera {
    public:
     double speed;            // for movement operations
     double rotation_speed;   // in degrees
@@ -82,13 +80,13 @@ class Object {
     int shine;            // exponent term of specular component
 
    public:
-    Object(const Vector& ref = Vector(0, 0, 0)) : reference_point(ref) {}
+    Object(const Vector& ref = Vector(0, 0, 0));
     ~Object();
     virtual void draw() {}
-    void set_color(double r, double g, double b) {}
-    void set_shine(int shine) {}
+    void set_color(double r, double g, double b);
+    void set_shine(int shine);
     void set_coefficients(double ambient, double diffuse, double specular,
-                          double reflection) {}
+                          double reflection);
 };
 
 class Floor : public Object {
@@ -96,20 +94,16 @@ class Floor : public Object {
     double floor_width, tile_width;
 
    public:
-    Floor(double floor_width, double tile_width)
-        : Object(Vector(-floor_width / 2.0, -floor_width / 2.0, 0.0)),
-          floor_width(floor_width),
-          tile_width(tile_width) {}
+    Floor(double floor_width, double tile_width);
     void draw();
 };
 
 class Sphere : public Object {
-   private:
+   protected:
     double radius;
 
    public:
-    Sphere(const Vector& center, double radius)
-        : Object(center), radius(radius) {}
+    Sphere(const Vector& center, double radius);
     void draw();
 };
 
@@ -118,8 +112,7 @@ class Triangle : public Object {
     Vector a, b, c;
 
    public:
-    Triangle(const Vector& a, const Vector& b, const Vector& c)
-        : a(a), b(b), c(c) {}
+    Triangle(const Vector& a, const Vector& b, const Vector& c);
     void draw();
 };
 
@@ -131,47 +124,37 @@ class GeneralQuadraticSurface : public Object {
    public:
     GeneralQuadraticSurface(double A, double B, double C, double D, double E,
                             double F, double G, double H, double I, double J,
-                            const Vector& ref, double l, double w, double h)
-        : Object(ref),
-          A(A),
-          B(B),
-          C(C),
-          D(D),
-          E(E),
-          F(F),
-          G(G),
-          H(H),
-          I(I),
-          J(J),
-          length(l),
-          width(w),
-          height(h) {}
+                            const Vector& ref, double l, double w, double h);
     void draw();
 };
 
 class PointLight {
-   private:
+   protected:
     Vector light_position;  // position of the light source
     double color[3];        // red, green, blue
+
    public:
-    PointLight(const Vector& pos, double r, double g, double b)
-        : light_position(pos), color{r, g, b} {}
+    PointLight(const Vector& pos, double r, double g, double b);
     ~PointLight();
 };
 
 class SpotLight {
-   private:
+   protected:
     PointLight point_light;
     Vector light_direction;  // direction of the light source
     double cutoff_angle;     // in degrees
 
    public:
     SpotLight(const Vector& pos, double r, double g, double b,
-              const Vector& dir, double angle)
-        : point_light(pos, r, g, b),
-          light_direction(dir),
-          cutoff_angle(angle) {}
+              const Vector& dir, double angle);
     ~SpotLight();
 };
+
+// Function Prototypes
+void draw_line(const Vector& a, const Vector& b);
+void draw_triangle(const Vector& a, const Vector& b, const Vector& c);
+void draw_quad(const Vector& a, const Vector& b, const Vector& c,
+               const Vector& d);
+void draw_sphere(double radius, int stacks, int sectors);
 
 #endif

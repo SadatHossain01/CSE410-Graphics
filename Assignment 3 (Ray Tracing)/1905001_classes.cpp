@@ -174,9 +174,23 @@ void Camera::move_down_same_ref() {
 }
 
 // Object
+Object::Object(const Vector& ref) : reference_point(ref) {}
+void Object::set_color(double r, double g, double b) {
+    color[0] = r, color[1] = g, color[2] = b;
+}
+void Object::set_shine(int shine) { this->shine = shine; }
+void Object::set_coefficients(double ambient, double diffuse, double specular,
+                              double reflection) {
+    coefficients[0] = ambient, coefficients[1] = diffuse;
+    coefficients[2] = specular, coefficients[3] = reflection;
+}
 Object::~Object() {}
 
 // Floor
+Floor::Floor(double floor_width, double tile_width)
+    : Object(Vector(-floor_width / 2.0, -floor_width / 2.0, 0.0)),
+      floor_width(floor_width),
+      tile_width(tile_width) {}
 void Floor::draw() {
     int tile_count = floor_width / tile_width;
     for (int i = 0; i < tile_count; i++) {
@@ -187,14 +201,9 @@ void Floor::draw() {
                 else glColor3f(1, 1, 1);
                 glTranslatef(this->reference_point.x + i * tile_width,
                              this->reference_point.y + j * tile_width, 0);
-                glBegin(GL_QUADS);
-                {
-                    glVertex3f(0, 0, 0);
-                    glVertex3f(tile_width, 0, 0);
-                    glVertex3f(tile_width, tile_width, 0);
-                    glVertex3f(0, tile_width, 0);
-                }
-                glEnd();
+                draw_quad(Vector(0, 0, 0), Vector(tile_width, 0, 0),
+                          Vector(tile_width, tile_width, 0),
+                          Vector(0, tile_width, 0));
             }
             glPopMatrix();
         }
@@ -202,13 +211,120 @@ void Floor::draw() {
 }
 
 // Sphere
-void Sphere::draw() {}
+Sphere::Sphere(const Vector& center, double radius)
+    : Object(center), radius(radius) {}
+void Sphere::draw() {
+    glColor3f(this->color[0], this->color[1], this->color[2]);
+    draw_sphere(radius, 25, 25);
+}
 
 // Triangle
-void Triangle::draw() {}
+Triangle::Triangle(const Vector& a, const Vector& b, const Vector& c)
+    : a(a), b(b), c(c) {}
+void Triangle::draw() {
+    glColor3f(this->color[0], this->color[1], this->color[2]);
+    draw_triangle(a, b, c);
+}
 
 // GeneralQuadraticSurface
+GeneralQuadraticSurface::GeneralQuadraticSurface(double A, double B, double C,
+                                                 double D, double E, double F,
+                                                 double G, double H, double I,
+                                                 double J, const Vector& ref,
+                                                 double l, double w, double h)
+    : Object(ref),
+      A(A),
+      B(B),
+      C(C),
+      D(D),
+      E(E),
+      F(F),
+      G(G),
+      H(H),
+      I(I),
+      J(J),
+      length(l),
+      width(w),
+      height(h) {}
 void GeneralQuadraticSurface::draw() {}
 
+// Point Light
+PointLight::PointLight(const Vector& pos, double r, double g, double b)
+    : light_position(pos), color{r, g, b} {}
 PointLight::~PointLight() {}
+
+// Spot Light
+SpotLight::SpotLight(const Vector& pos, double r, double g, double b,
+                     const Vector& dir, double angle)
+    : point_light(pos, r, g, b), light_direction(dir), cutoff_angle(angle) {}
 SpotLight::~SpotLight() {}
+
+// Helper Functions
+void draw_line(const Vector& a, const Vector& b) {
+    glBegin(GL_LINES);
+    {
+        glVertex3f(a.x, a.y, a.z);
+        glVertex3f(b.x, b.y, b.z);
+    }
+    glEnd();
+}
+
+void draw_triangle(const Vector& a, const Vector& b, const Vector& c) {
+    glBegin(GL_TRIANGLES);
+    {
+        glVertex3f(a.x, a.y, a.z);
+        glVertex3f(b.x, b.y, b.z);
+        glVertex3f(c.x, c.y, c.z);
+    }
+    glEnd();
+}
+
+void draw_quad(const Vector& a, const Vector& b, const Vector& c,
+               const Vector& d) {
+    glBegin(GL_QUADS);
+    {
+        glVertex3f(a.x, a.y, a.z);
+        glVertex3f(b.x, b.y, b.z);
+        glVertex3f(c.x, c.y, c.z);
+        glVertex3f(d.x, d.y, d.z);
+    }
+    glEnd();
+}
+
+void draw_sphere(double radius, int stack_count, int sector_count) {
+    double stack_step = PI / stack_count;
+    double sector_step = 2 * PI / sector_count;
+
+    std::vector<Vector> points;
+
+    for (int i = 0; i <= stack_count; i++) {
+        double stack_angle = PI / 2.0 - i * stack_step;  // [-π/2, π/2]
+        for (int j = 0; j <= sector_count; j++) {
+            double sector_angle = j * sector_step;       // [0, 2π]
+
+            double x = radius * cos(stack_angle) * cos(sector_angle);
+            double y = radius * cos(stack_angle) * sin(sector_angle);
+            double z = radius * sin(stack_angle);
+
+            points.push_back(Vector(x, y, z));
+        }
+    }
+
+    for (int i = 0; i < stack_count; i++) {
+        int k1 = i * (sector_count + 1);
+        int k2 = k1 + sector_count + 1;
+        for (int j = 0; j < sector_count; j++) {
+            if (i != 0)
+                draw_triangle(points[k1 + j], points[k2 + j],
+                              points[k1 + 1 + j]);
+            if (i != stack_count - 1)
+                draw_triangle(points[k1 + 1 + j], points[k2 + j],
+                              points[k2 + 1 + j]);
+
+            draw_line(points[j + k1], points[j + k2]);
+            if (i != 0) draw_line(points[j + k1], points[j + k1 + 1]);
+        }
+    }
+
+    points.clear();
+}
