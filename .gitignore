@@ -9,3 +9,4 @@ Assignment 2 (Rasterization)/temp/
 Assignment 2 (Rasterization)/out.bmp
 Assignment 2 (Rasterization)/z_buffer.txt
 Assignment 2 (Rasterization)/test.cpp
+*.o

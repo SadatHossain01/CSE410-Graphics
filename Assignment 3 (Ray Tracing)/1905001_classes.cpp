@@ -1,10 +1,5 @@
 #include "1905001_classes.h"
 
-#include <cassert>
-#include <cmath>
-#include <limits>
-#include <stdexcept>
-
 const double PI = 2 * acos(0.0);
 const double EPS = 1e-8;
 
@@ -182,7 +177,29 @@ void Camera::move_down_same_ref() {
 Object::~Object() {}
 
 // Floor
-void Floor::draw() {}
+void Floor::draw() {
+    int tile_count = floor_width / tile_width;
+    for (int i = 0; i < tile_count; i++) {
+        for (int j = 0; j < tile_count; j++) {
+            glPushMatrix();
+            {
+                if ((i + j) % 2 == 0) glColor3f(0, 0, 0);
+                else glColor3f(1, 1, 1);
+                glTranslatef(this->reference_point.x + i * tile_width,
+                             this->reference_point.y + j * tile_width, 0);
+                glBegin(GL_QUADS);
+                {
+                    glVertex3f(0, 0, 0);
+                    glVertex3f(tile_width, 0, 0);
+                    glVertex3f(tile_width, tile_width, 0);
+                    glVertex3f(0, tile_width, 0);
+                }
+                glEnd();
+            }
+            glPopMatrix();
+        }
+    }
+}
 
 // Sphere
 void Sphere::draw() {}

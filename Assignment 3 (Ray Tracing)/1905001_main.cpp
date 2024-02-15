@@ -1,22 +1,16 @@
-#ifdef __linux__
-#include <GL/glut.h>
-#elif WIN32
-#include <GL/glut.h>
+#ifdef WIN32
 #include <windows.h>
 #endif
 
-#include <cstdio>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
+#include <GL/glut.h>
+#include <bits/stdc++.h>
 
 #include "1905001_classes.h"
 
 int reflection_depth;
 int screen_width, screen_height;
 
-Camera camera;
+Camera camera(Vector(20, 20, 20), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
 std::vector<Object *> objects;
 std::vector<PointLight *> point_lights;
 std::vector<SpotLight *> spot_lights;
@@ -174,6 +168,7 @@ void display() {
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
 
+    objects.back()->draw();
     glutSwapBuffers();
 }
 

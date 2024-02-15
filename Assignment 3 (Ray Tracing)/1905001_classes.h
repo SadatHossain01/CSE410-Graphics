@@ -1,6 +1,9 @@
 #ifndef CLASSES_H
 #define CLASSES_H
 
+#include <GL/glut.h>
+#include <bits/stdc++.h>
+
 #include <iostream>
 
 // Forward Declarations
@@ -71,7 +74,7 @@ class Camera {
 };
 
 class Object {
-   private:
+   protected:
     Vector reference_point;
     double color[3];      // red, green, blue
     double
