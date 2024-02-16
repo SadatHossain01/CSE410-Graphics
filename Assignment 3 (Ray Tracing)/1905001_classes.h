@@ -24,7 +24,6 @@ const double EPS = 1e-8;
 
 extern std::vector<Object*> objects;
 extern std::vector<LightSource*> light_sources;
-extern int reflection_depth;
 
 struct Color {
    public:
@@ -61,6 +60,7 @@ struct Vector {
     Vector operator*=(const double& d);
     Vector operator/(const double& d) const;
     Vector operator/=(const double& d);
+    const Vector& operator=(const Vector& v);
     double dot(const Vector& v) const;
     Vector cross(const Vector& v) const;
     Vector normalize() const;
@@ -123,7 +123,7 @@ class Object {
     virtual Vector get_normal(const Vector& point) const = 0;
     virtual Color get_color_at(const Vector& point) const;
     double intersect(const Ray& ray, Color& color, int level);
-    virtual double find_ray_intersection(const Ray& ray) = 0;
+    virtual double find_ray_intersection(Ray ray) = 0;
     void set_color(double r, double g, double b);
     void set_shine(int shine);
     void set_coefficients(double ambient, double diffuse, double specular,
@@ -140,7 +140,7 @@ class Floor : public Object {
     void draw() override;
     Vector get_normal(const Vector& point) const override;
     Color get_color_at(const Vector& pt) const override;
-    double find_ray_intersection(const Ray& ray) override;
+    double find_ray_intersection(Ray ray) override;
     void print() const override;
 };
 
@@ -152,7 +152,7 @@ class Sphere : public Object {
     Sphere(const Vector& center, double radius);
     void draw() override;
     Vector get_normal(const Vector& point) const override;
-    double find_ray_intersection(const Ray& ray) override;
+    double find_ray_intersection(Ray ray) override;
     void print() const override;
 };
 
@@ -164,11 +164,12 @@ class Triangle : public Object {
     Triangle(const Vector& a, const Vector& b, const Vector& c);
     void draw() override;
     Vector get_normal(const Vector& point) const override;
-    double find_ray_intersection(const Ray& ray) override;
+    double find_ray_intersection(Ray ray) override;
     void print() const override;
 };
 
 class GeneralQuadraticSurface : public Object {
+    // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fzx + Gx + Hy + Iz + J = 0
    private:
     double A, B, C, D, E, F, G, H, I, J;
     double length, width, height;
@@ -179,7 +180,7 @@ class GeneralQuadraticSurface : public Object {
                             const Vector& ref, double l, double w, double h);
     void draw() override;
     Vector get_normal(const Vector& point) const override;
-    double find_ray_intersection(const Ray& ray) override;
+    double find_ray_intersection(Ray ray) override;
     void print() const override;
 };
 

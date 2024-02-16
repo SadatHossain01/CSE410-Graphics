@@ -96,6 +96,11 @@ Vector Vector::operator/=(const double& d) {
     return *this;
 }
 
+const Vector& Vector::operator=(const Vector& v) {
+    x = v.x, y = v.y, z = v.z;
+    return *this;
+}
+
 double Vector::dot(const Vector& v) const {
     return x * v.x + y * v.y + z * v.z;
 }
@@ -261,19 +266,19 @@ void Object::set_coefficients(double ambient, double diffuse, double specular,
 }
 
 double Object::intersect(const Ray& ray, Color& color, int level) {
-    double t_min = find_ray_intersection(ray);
-    if (level == 0)
-        return t_min;  // determine the nearest object only, no color
+    double t_intersect = find_ray_intersection(ray);
+    if (level == 0 || t_intersect < 0) return t_intersect;
 
-    Vector intersection_point = ray.origin + ray.dir * t_min;
+    Vector intersection_point = ray.origin + ray.dir * t_intersect;
     Color local_color = get_color_at(intersection_point);
 
     // Ambient Component
     color = local_color * phong_coefficients.ambient;
 
-    Ray surface_normal(intersection_point, get_normal(intersection_point));
+    // Normal at intersection point
+    Vector surface_normal = get_normal(intersection_point);
 
-    for (auto ls : light_sources) {
+    for (LightSource* ls : light_sources) {
         Ray light_ray(
             ls->light_position,
             intersection_point -
@@ -288,17 +293,18 @@ double Object::intersect(const Ray& ray, Color& color, int level) {
             double dot = light_ray.dir.dot(sls->light_direction);
             double angle = acos(dot / (light_ray.dir.norm() *
                                        sls->light_direction.norm())) *
-                           180 / PI;
-            if (angle > sls->cutoff_angle) continue;
+                           180.0 / PI;
+            if (fabs(angle) >= sls->cutoff_angle) continue;
         }
 
         // Check if this ray is obscured by any other object
+        // that is, if this ray reaches any other object before the current one
         double t_cur = (intersection_point - ls->light_position).norm();
         if (t_cur < EPS)
-            continue;  // light source is literally at the intersection point
+            continue;  // light source is at the intersection point or in front
 
         bool obscured = false;
-        for (auto obj : objects) {
+        for (Object* obj : objects) {
             double t = obj->find_ray_intersection(light_ray);
             if (t > EPS && t + EPS < t_cur) {
                 obscured = true;
@@ -309,30 +315,55 @@ double Object::intersect(const Ray& ray, Color& color, int level) {
 
         // So, the light ray is not obscured by any other object
 
+        // Diffuse Component
         // Calculate Lambert value using the surface normal and light ray
-        double lambert = std::max(0.0, surface_normal.dir.dot(-light_ray.dir));
+        double lambert_value =
+            std::max(0.0, surface_normal.dot(-light_ray.dir));
+        color += ls->color * phong_coefficients.diffuse * lambert_value *
+                 local_color;
 
+        // Specular Component
         // Find reflected ray for the light ray
         Ray reflected_ray(
             intersection_point,
             light_ray.dir -
-                2 * surface_normal.dir.dot(light_ray.dir) *
-                    surface_normal
-                        .dir);  // Again, because the light ray should be from
-                                // the intersection point to the light source
-
+                2 * surface_normal.dot(light_ray.dir) * surface_normal);
         // Calculate Phong value using the reflected ray and the view ray
-        double phong = std::max(0.0, reflected_ray.dir.dot(-ray.dir));
-
-        // Diffuse Component
-        color += ls->color * phong_coefficients.diffuse * lambert * local_color;
-
-        // Specular Component
+        double phong_value = std::max(0.0, reflected_ray.dir.dot(-ray.dir));
         color += ls->color * phong_coefficients.specular *
-                 pow(phong, phong_coefficients.shine) * local_color;
+                 pow(phong_value, phong_coefficients.shine) * local_color;
     }
 
-    if (level >= reflection_depth) return t_min;
+    if (level == 0) return t_intersect;
+
+
+    // Recursive Reflection
+    Ray reflected_ray(
+        intersection_point,
+        ray.dir - 2 * surface_normal.dot(ray.dir) * surface_normal);
+
+    // To avoid self-reflection
+    reflected_ray.origin += reflected_ray.dir * EPS;
+
+    int nearest_idx = -1;
+    double t_min_reflection = 1e9;
+
+    for (int k = 0; k < objects.size(); k++) {
+        Object* o = objects[k];
+        double t = o->find_ray_intersection(reflected_ray);
+        if (t > 0 && t < t_min_reflection) {
+            t_min_reflection = t;
+            nearest_idx = k;
+        }
+    }
+
+    if (nearest_idx == -1) return t_intersect;
+
+    Color reflected_color(0, 0, 0);
+    double t = objects[nearest_idx]->intersect(reflected_ray, reflected_color,
+                                               level - 1);
+    color += reflected_color * phong_coefficients.reflection;
+    return t_intersect;
 }
 
 Object::~Object() {}
@@ -378,9 +409,16 @@ Color Floor::get_color_at(const Vector& pt) const {
     return Color(1, 1, 1);
 }
 
-double Floor::find_ray_intersection(const Ray& ray) { return -1.0; }
+double Floor::find_ray_intersection(Ray ray) {
+    if (fabs(ray.dir.z) <= EPS) return -1.0;
+    double t = -ray.origin.z / ray.dir.z;
+    if (t < 0) return -1.0;
+    return t;
+}
 
 Vector Floor::get_normal(const Vector& point) const { return Vector(0, 0, 1); }
+
+
 
 // Sphere
 
@@ -391,7 +429,7 @@ void Sphere::draw() {
     glColor3f(color.r, color.g, color.b);
     glPushMatrix();
     glTranslatef(reference_point.x, reference_point.y, reference_point.z);
-    draw_sphere(radius, 25, 25);
+    draw_sphere(radius, 50, 50);
     glPopMatrix();
 }
 
@@ -399,27 +437,24 @@ Vector Sphere::get_normal(const Vector& point) const {
     return (point - reference_point).normalize();
 }
 
-double Sphere::find_ray_intersection(const Ray& ray) {
-    /*
-    https://kylehalladay.com/blog/tutorial/math/2013/12/24/Ray-Sphere-Intersection.html
-    t1, t2: the distance from the ray origin to the intersection points (P1,
-    P2) tc: the distance from the ray origin to the point (P') on the ray
-    halfway between the 2 intersection points t1c: distance from the closest
-    intersection point (P1) to the point (P')
-    */
-    Vector origin_center = reference_point - ray.origin;
-    double tc = origin_center.dot(ray.dir);
-    if (tc < EPS) return -1;
-    // d: the perpendicular distance from the center to P'
-    double d_squared = tc * tc - origin_center.dot(origin_center);
-    double radius_squared = radius * radius;
-    if (d_squared > radius_squared) return -1;
-    double t1c = sqrt(radius_squared - d_squared);
-    double t1 = tc - t1c;
-    double t2 = tc + t1c;
-    if (t1 > t2) std::swap(t1, t2);
-    if (t2 < 0) return -1;
-    return t1 > 0 ? t1 : t2;
+double Sphere::find_ray_intersection(Ray ray) {
+    Vector center_to_ray_origin = ray.origin - reference_point;
+
+    // ray : the ray from eye/light source to the object
+    double a = 1.0;
+    double b = 2 * ray.dir.dot(center_to_ray_origin);
+    double c = center_to_ray_origin.dot(center_to_ray_origin) - radius * radius;
+
+    double discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return -1.0;
+
+    double t_minus = (-b - sqrt(discriminant)) / (2 * a);
+    double t_plus = (-b + sqrt(discriminant)) / (2 * a);
+
+    if (t_minus < 0 && t_plus < 0) return -1.0;
+    if (t_minus < 0) return t_plus;
+    if (t_plus < 0) return t_minus;
+    return std::min(t_minus, t_plus);
 }
 
 void Sphere::print() const {
@@ -438,7 +473,7 @@ void Triangle::draw() {
     draw_triangle(a, b, c);
 }
 
-double Triangle::find_ray_intersection(const Ray& ray) { return -1.0; }
+double Triangle::find_ray_intersection(Ray ray) { return -1.0; }
 
 Vector Triangle::get_normal(const Vector& point) const {
     return (b - a).cross(c - a).normalize();
@@ -474,12 +509,13 @@ GeneralQuadraticSurface::GeneralQuadraticSurface(double A, double B, double C,
 
 void GeneralQuadraticSurface::draw() {}
 
-double GeneralQuadraticSurface::find_ray_intersection(const Ray& ray) {
-    return -1.0;
-}
+double GeneralQuadraticSurface::find_ray_intersection(Ray ray) { return -1.0; }
 
 Vector GeneralQuadraticSurface::get_normal(const Vector& point) const {
-    return Vector(0, 0, 0);
+    return Vector(2 * A * point.x + D * point.y + F * point.z + G,
+                  2 * B * point.y + D * point.x + E * point.z + H,
+                  2 * C * point.z + E * point.y + F * point.x + I)
+        .normalize();
 }
 
 void GeneralQuadraticSurface::print() const {
@@ -551,32 +587,5 @@ void draw_quad(const Vector& a, const Vector& b, const Vector& c,
 }
 
 void draw_sphere(double radius, int stack_count, int sector_count) {
-    double stack_step = PI / stack_count;
-    double sector_step = 2 * PI / sector_count;
-    std::vector<Vector> points;
-    for (int i = 0; i <= stack_count; i++) {
-        double stack_angle = PI / 2.0 - i * stack_step;  // [-π/2, π/2]
-        for (int j = 0; j <= sector_count; j++) {
-            double sector_angle = j * sector_step;       // [0, 2π]
-            double x = radius * cos(stack_angle) * cos(sector_angle);
-            double y = radius * cos(stack_angle) * sin(sector_angle);
-            double z = radius * sin(stack_angle);
-            points.push_back(Vector(x, y, z));
-        }
-    }
-    for (int i = 0; i < stack_count; i++) {
-        int k1 = i * (sector_count + 1);
-        int k2 = k1 + sector_count + 1;
-        for (int j = 0; j < sector_count; j++) {
-            if (i != 0)
-                draw_triangle(points[k1 + j], points[k2 + j],
-                              points[k1 + 1 + j]);
-            if (i != stack_count - 1)
-                draw_triangle(points[k1 + 1 + j], points[k2 + j],
-                              points[k2 + 1 + j]);
-            draw_line(points[j + k1], points[j + k2]);
-            if (i != 0) draw_line(points[j + k1], points[j + k1 + 1]);
-        }
-    }
-    points.clear();
+    glutSolidSphere(radius, sector_count, stack_count);
 }

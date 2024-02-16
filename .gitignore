@@ -10,3 +10,6 @@ Assignment 2 (Rasterization)/out.bmp
 Assignment 2 (Rasterization)/z_buffer.txt
 Assignment 2 (Rasterization)/test.cpp
 *.o
+Assignment 3 (Ray Tracing)/demo
+Assignment 3 (Ray Tracing)/test.txt
+Assignment 3 (Ray Tracing)/Output_11.bmp

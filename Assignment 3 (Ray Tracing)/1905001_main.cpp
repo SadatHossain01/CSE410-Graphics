@@ -32,7 +32,7 @@ void init() {
     glClearColor(0.0f, 0.0f, 0.0f,
                  1.0f);  // Set background color to black and opaque
 
-    load_data("scene.txt");
+    load_data("test.txt");
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -41,7 +41,6 @@ void init() {
 }
 
 void capture() {
-    const int image_width = 500, image_height = 500;
     bitmap_image image(image_width, image_height);
     image.set_all_channels(0, 0, 0);
 
@@ -57,23 +56,23 @@ void capture() {
     // Choose middle of the grid cell
     top_left += 0.5 * du * camera.right - 0.5 * dv * camera.up;
 
-    int nearest_idx = -1;
-    double t_min = 1e9;
+    int nearest_idx;
+    double t_min;
 
-    for (int i = 0; i < image_height; i++) {
-        for (int j = 0; j < image_width; j++) {
+    for (int i = 0; i < image_width; i++) {
+        for (int j = 0; j < image_height; j++) {
             // Calculate current pixel
             Vector cur_pixel =
-                top_left + j * du * camera.right - i * dv * camera.up;
+                top_left + i * du * camera.right - j * dv * camera.up;
 
-            // Cast ray from eye to pixel direction
+            // Cast ray from eye to pixel
             Ray ray(camera.pos, cur_pixel - camera.pos);
-            Color color;
+
+            nearest_idx = -1;
+            t_min = 1e9;
             for (int k = 0; k < objects.size(); k++) {
                 Object *o = objects[k];
-                double t = o->intersect(ray, color, 0);
-                // o->print();
-                // printf("t: %lf\n", t);
+                double t = o->find_ray_intersection(ray);
                 if (t > 0 && t < t_min) {
                     t_min = t;
                     nearest_idx = k;
@@ -82,18 +81,16 @@ void capture() {
 
             if (nearest_idx == -1) continue;
 
-            printf("Pixel: %d %d\n", i, j);
-
-            color = Color(0, 0, 0);
+            Color color(0, 0, 0);
             double t = objects[nearest_idx]->intersect(
-                ray, color, 1);  // the return value does not matter here
+                ray, color, reflection_depth);  // return value doesn't matter
             color.r = std::min(1.0, color.r);
             color.g = std::min(1.0, color.g);
             color.b = std::min(1.0, color.b);
             color.r = std::max(0.0, color.r);
             color.g = std::max(0.0, color.g);
             color.b = std::max(0.0, color.b);
-            image.set_pixel(j, i, 255 * color.r, 255 * color.g, 255 * color.b);
+            image.set_pixel(i, j, 255 * color.r, 255 * color.g, 255 * color.b);
         }
     }
 
@@ -103,8 +100,8 @@ void capture() {
 }
 
 void free_memory() {
-    for (auto object : objects) delete object;
-    for (auto light : light_sources) delete light;
+    for (Object *object : objects) delete object;
+    for (LightSource *light : light_sources) delete light;
 }
 
 void load_data(const std::string &filename) {
@@ -233,7 +230,7 @@ void display() {
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
 
-    for (auto they : objects) they->draw();
+    for (Object *they : objects) they->draw();
     glutSwapBuffers();
 }
 
