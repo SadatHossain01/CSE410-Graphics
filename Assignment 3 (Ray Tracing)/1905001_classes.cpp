@@ -239,7 +239,7 @@ void Camera::move_down_same_ref() {
 
 // Ray
 
-Ray::Ray(const Vector& start, const Vector& dir) : start(start) {
+Ray::Ray(const Vector& start, const Vector& dir) : origin(start) {
     this->dir = dir.normalize();
 }
 
@@ -265,7 +265,7 @@ double Object::intersect(const Ray& ray, Color& color, int level) {
     if (level == 0)
         return t_min;  // determine the nearest object only, no color
 
-    Vector intersection_point = ray.start + ray.dir * t_min;
+    Vector intersection_point = ray.origin + ray.dir * t_min;
     Color local_color = get_color_at(intersection_point);
 
     // Ambient Component
@@ -365,6 +365,12 @@ void Floor::draw() {
     }
 }
 
+void Floor::print() const {
+    std::cout << "Floor at (" << reference_point.x << ", " << reference_point.y
+              << ", " << reference_point.z << ") with floor width "
+              << floor_width << " and tile width " << tile_width << std::endl;
+}
+
 Color Floor::get_color_at(const Vector& pt) const {
     int i = (pt.x - reference_point.x) / tile_width;
     int j = (pt.y - reference_point.y) / tile_width;
@@ -401,10 +407,12 @@ double Sphere::find_ray_intersection(const Ray& ray) {
     halfway between the 2 intersection points t1c: distance from the closest
     intersection point (P1) to the point (P')
     */
-    Vector origin_center = reference_point - ray.start;
+    Vector origin_center = reference_point - ray.origin;
     double tc = origin_center.dot(ray.dir);
+    if (tc < EPS) return -1;
     // d: the perpendicular distance from the center to P'
     double d = sqrt(tc * tc - origin_center.dot(origin_center));
+    if (d > radius - EPS) return -1;
     double t1c = sqrt(radius * radius - d * d);
     double t1 = tc - t1c;
     double t2 = tc + t1c;
@@ -413,7 +421,11 @@ double Sphere::find_ray_intersection(const Ray& ray) {
     return t1 > 0 ? t1 : t2;
 }
 
-
+void Sphere::print() const {
+    std::cout << "Sphere at (" << reference_point.x << ", " << reference_point.y
+              << ", " << reference_point.z << ") with radius " << radius
+              << std::endl;
+}
 
 // Triangle
 
@@ -431,6 +443,10 @@ Vector Triangle::get_normal(const Vector& point) const {
     return (b - a).cross(c - a).normalize();
 }
 
+void Triangle::print() const {
+    std::cout << "Triangle with vertices " << a << ", " << b << ", " << c
+              << std::endl;
+}
 
 
 // GeneralQuadraticSurface
@@ -465,7 +481,12 @@ Vector GeneralQuadraticSurface::get_normal(const Vector& point) const {
     return Vector(0, 0, 0);
 }
 
-
+void GeneralQuadraticSurface::print() const {
+    std::cout << "General Quadratic Surface at (" << reference_point.x << ", "
+              << reference_point.y << ", " << reference_point.z
+              << ") with length " << length << ", width " << width
+              << ", height " << height << std::endl;
+}
 
 // Light Source
 

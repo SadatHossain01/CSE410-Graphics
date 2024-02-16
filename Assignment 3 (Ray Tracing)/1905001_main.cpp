@@ -72,24 +72,28 @@ void capture() {
             for (int k = 0; k < objects.size(); k++) {
                 Object *o = objects[k];
                 double t = o->intersect(ray, color, 0);
-                if (t > 0 && (nearest_idx == -1 || t < t_min)) {
+                // o->print();
+                // printf("t: %lf\n", t);
+                if (t > 0 && t < t_min) {
                     t_min = t;
                     nearest_idx = k;
                 }
             }
 
-            if (nearest_idx != -1) {
-                color = Color(0, 0, 0);
-                t_min = objects[nearest_idx]->intersect(ray, color, 1);
-                color.r = std::min(1.0, color.r);
-                color.g = std::min(1.0, color.g);
-                color.b = std::min(1.0, color.b);
-                color.r = std::max(0.0, color.r);
-                color.g = std::max(0.0, color.g);
-                color.b = std::max(0.0, color.b);
-                image.set_pixel(j, i, 255 * color.r, 255 * color.g,
-                                255 * color.b);
-            }
+            if (nearest_idx == -1) continue;
+
+            printf("Pixel: %d %d\n", i, j);
+
+            color = Color(0, 0, 0);
+            double t = objects[nearest_idx]->intersect(
+                ray, color, 1);  // the return value does not matter here
+            color.r = std::min(1.0, color.r);
+            color.g = std::min(1.0, color.g);
+            color.b = std::min(1.0, color.b);
+            color.r = std::max(0.0, color.r);
+            color.g = std::max(0.0, color.g);
+            color.b = std::max(0.0, color.b);
+            image.set_pixel(j, i, 255 * color.r, 255 * color.g, 255 * color.b);
         }
     }
 

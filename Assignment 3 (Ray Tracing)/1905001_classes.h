@@ -106,7 +106,7 @@ struct Camera {
 
 struct Ray {
    public:
-    Vector start, dir;
+    Vector origin, dir;
     Ray(const Vector& start, const Vector& dir);
 };
 
@@ -128,6 +128,7 @@ class Object {
     void set_shine(int shine);
     void set_coefficients(double ambient, double diffuse, double specular,
                           double reflection);
+    virtual void print() const = 0;
 };
 
 class Floor : public Object {
@@ -140,6 +141,7 @@ class Floor : public Object {
     Vector get_normal(const Vector& point) const override;
     Color get_color_at(const Vector& pt) const override;
     double find_ray_intersection(const Ray& ray) override;
+    void print() const override;
 };
 
 class Sphere : public Object {
@@ -151,6 +153,7 @@ class Sphere : public Object {
     void draw() override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(const Ray& ray) override;
+    void print() const override;
 };
 
 class Triangle : public Object {
@@ -162,6 +165,7 @@ class Triangle : public Object {
     void draw() override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(const Ray& ray) override;
+    void print() const override;
 };
 
 class GeneralQuadraticSurface : public Object {
@@ -176,6 +180,7 @@ class GeneralQuadraticSurface : public Object {
     void draw() override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(const Ray& ray) override;
+    void print() const override;
 };
 
 struct LightSource {
