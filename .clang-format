@@ -5,3 +5,4 @@ AlignTrailingComments:
   Kind: Always
   OverEmptyLines: 2
 AllowShortFunctionsOnASingleLine: All
+MaxEmptyLinesToKeep: 3

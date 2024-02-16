@@ -1,9 +1,42 @@
 #include "1905001_classes.h"
 
 // Color
+
 Color::Color(double r, double g, double b) : r(r), g(g), b(b) {}
 
+Color Color::operator+(const Color& c) const {
+    return Color(r + c.r, g + c.g, b + c.b);
+}
+
+Color Color::operator+=(const Color& c) {
+    r += c.r, g += c.g, b += c.b;
+    return *this;
+}
+
+Color Color::operator*(const double& d) const {
+    return Color(r * d, g * d, b * d);
+}
+
+Color Color::operator*(const Color& c) const {
+    Color ret(r * c.r, g * c.g, b * c.b);
+    assert(ret.r >= -EPS && ret.r <= 1 + EPS && ret.g >= -EPS &&
+           ret.g <= 1 + EPS && ret.b >= -EPS && ret.b <= 1 + EPS);
+    return ret;
+}
+
+Color operator*(const double& d, const Color& c) {
+    return Color(c.r * d, c.g * d, c.b * d);
+}
+
+Color Color::operator*=(const double& d) {
+    r *= d, g *= d, b *= d;
+    return *this;
+}
+
+
+
 // Phong Coefficients
+
 PhongCoefficients::PhongCoefficients(double ambient, double diffuse,
                                      double specular, double reflection,
                                      int shine)
@@ -13,7 +46,10 @@ PhongCoefficients::PhongCoefficients(double ambient, double diffuse,
       reflection(reflection),
       shine(shine) {}
 
+
+
 // Vector
+
 Vector::Vector(double x, double y, double z) : x(x), y(y), z(z) {}
 
 Vector Vector::operator+(const Vector& v) const {
@@ -33,6 +69,8 @@ Vector Vector::operator-=(const Vector& v) {
     x -= v.x, y -= v.y, z -= v.z;
     return *this;
 }
+
+Vector Vector::operator-() const { return Vector(-x, -y, -z); }
 
 Vector Vector::operator*(const double& d) const {
     return Vector(x * d, y * d, z * d);
@@ -106,7 +144,10 @@ std::ostream& operator<<(std::ostream& os, const Vector& v) {
     return os;
 }
 
+
+
 // Camera
+
 Camera::Camera(const Vector& eye, const Vector& look_at,
                const Vector& up_vector, double speed, double rotation_speed) {
     this->speed = speed;
@@ -125,35 +166,47 @@ Camera::Camera(const Vector& eye, const Vector& look_at,
 }
 
 void Camera::move_forward() { pos += speed * look; }
+
 void Camera::move_backward() { pos -= speed * look; }
+
 void Camera::move_left() { pos -= speed * right; }
+
 void Camera::move_right() { pos += speed * right; }
+
 void Camera::move_up() { pos += speed * up; }
+
 void Camera::move_down() { pos -= speed * up; }
+
 void Camera::look_left() {
     look = look.rotate(up, rotation_speed);
     right = right.rotate(up, rotation_speed);
 }
+
 void Camera::look_right() {
     look = look.rotate(up, -rotation_speed);
     right = right.rotate(up, -rotation_speed);
 }
+
 void Camera::look_up() {
     look = look.rotate(right, rotation_speed);
     up = up.rotate(right, rotation_speed);
 }
+
 void Camera::look_down() {
     look = look.rotate(right, -rotation_speed);
     up = up.rotate(right, -rotation_speed);
 }
+
 void Camera::tilt_clockwise() {
     right = right.rotate(look, rotation_speed);
     up = up.rotate(look, rotation_speed);
 }
+
 void Camera::tilt_counterclockwise() {
     right = right.rotate(look, -rotation_speed);
     up = up.rotate(look, -rotation_speed);
 }
+
 void Camera::move_up_same_ref() {
     double prev_dist = distance(pos, Vector(0, 0, 0));
     pos.z += speed;
@@ -167,6 +220,7 @@ void Camera::move_up_same_ref() {
     up = up.rotate(right, -angle);
     right = look.cross(up).normalize();
 }
+
 void Camera::move_down_same_ref() {
     double prev_dist = distance(pos, Vector(0, 0, 0));
     pos.z -= speed;
@@ -181,28 +235,117 @@ void Camera::move_down_same_ref() {
     right = look.cross(up).normalize();
 }
 
+
+
 // Ray
-Ray::Ray(const Vector& start, const Vector& dir) : start(start), dir(dir) {}
+
+Ray::Ray(const Vector& start, const Vector& dir) : start(start) {
+    this->dir = dir.normalize();
+}
+
 
 // Object
+
 Object::Object(const Vector& ref) : reference_point(ref) {}
+
+Color Object::get_color_at(const Vector& pt) const { return color; }
+
 void Object::set_color(double r, double g, double b) { color = Color(r, g, b); }
+
 void Object::set_shine(int shine) { phong_coefficients.shine = shine; }
+
 void Object::set_coefficients(double ambient, double diffuse, double specular,
                               double reflection) {
     phong_coefficients = PhongCoefficients(
         ambient, diffuse, specular, reflection, phong_coefficients.shine);
 }
-double Object::intersect(const Ray& ray, const Color& color, int level) {
-    return -1.0;
+
+double Object::intersect(const Ray& ray, Color& color, int level) {
+    double t_min = find_ray_intersection(ray);
+    if (level == 0)
+        return t_min;  // determine the nearest object only, no color
+
+    Vector intersection_point = ray.start + ray.dir * t_min;
+    Color local_color = get_color_at(intersection_point);
+
+    // Ambient Component
+    color = local_color * phong_coefficients.ambient;
+
+    Ray surface_normal(intersection_point, get_normal(intersection_point));
+
+    for (auto ls : light_sources) {
+        Ray light_ray(
+            ls->light_position,
+            intersection_point -
+                ls->light_position);  // In Lambert's cosine law, the light ray
+                                      // is from the intersection point to the
+                                      // light source
+
+        if (ls->type == LightSource::SPOT) {
+            // Continue with spot light unless the ray cast from light_position
+            // to intersection_point exceeds the cutoff angle
+            SpotLight* sls = (SpotLight*)ls;
+            double dot = light_ray.dir.dot(sls->light_direction);
+            double angle = acos(dot / (light_ray.dir.norm() *
+                                       sls->light_direction.norm())) *
+                           180 / PI;
+            if (angle > sls->cutoff_angle) continue;
+        }
+
+        // Check if this ray is obscured by any other object
+        double t_cur = (intersection_point - ls->light_position).norm();
+        if (t_cur < EPS)
+            continue;  // light source is literally at the intersection point
+
+        bool obscured = false;
+        for (auto obj : objects) {
+            double t = obj->find_ray_intersection(light_ray);
+            if (t > EPS && t + EPS < t_cur) {
+                obscured = true;
+                break;
+            }
+        }
+        if (obscured) continue;
+
+        // So, the light ray is not obscured by any other object
+
+        // Calculate Lambert value using the surface normal and light ray
+        double lambert = std::max(0.0, surface_normal.dir.dot(-light_ray.dir));
+
+        // Find reflected ray for the light ray
+        Ray reflected_ray(
+            intersection_point,
+            light_ray.dir -
+                2 * surface_normal.dir.dot(light_ray.dir) *
+                    surface_normal
+                        .dir);  // Again, because the light ray should be from
+                                // the intersection point to the light source
+
+        // Calculate Phong value using the reflected ray and the view ray
+        double phong = std::max(0.0, reflected_ray.dir.dot(-ray.dir));
+
+        // Diffuse Component
+        color += ls->color * phong_coefficients.diffuse * lambert * local_color;
+
+        // Specular Component
+        color += ls->color * phong_coefficients.specular *
+                 pow(phong, phong_coefficients.shine) * local_color;
+    }
+
+    if (level >= reflection_depth) return t_min;
 }
+
 Object::~Object() {}
 
+
+
 // Floor
+
 Floor::Floor(double floor_width, double tile_width)
     : Object(Vector(-floor_width / 2.0, -floor_width / 2.0, 0.0)),
       floor_width(floor_width),
       tile_width(tile_width) {}
+
 void Floor::draw() {
     int tile_count = floor_width / tile_width;
     for (int i = 0; i < tile_count; i++) {
@@ -222,9 +365,22 @@ void Floor::draw() {
     }
 }
 
+Color Floor::get_color_at(const Vector& pt) const {
+    int i = (pt.x - reference_point.x) / tile_width;
+    int j = (pt.y - reference_point.y) / tile_width;
+    if ((i + j) % 2 == 0) return Color(0, 0, 0);
+    return Color(1, 1, 1);
+}
+
+double Floor::find_ray_intersection(const Ray& ray) { return -1.0; }
+
+Vector Floor::get_normal(const Vector& point) const { return Vector(0, 0, 1); }
+
 // Sphere
+
 Sphere::Sphere(const Vector& center, double radius)
     : Object(center), radius(radius) {}
+
 void Sphere::draw() {
     glColor3f(color.r, color.g, color.b);
     glPushMatrix();
@@ -233,15 +389,52 @@ void Sphere::draw() {
     glPopMatrix();
 }
 
+Vector Sphere::get_normal(const Vector& point) const {
+    return (point - reference_point).normalize();
+}
+
+double Sphere::find_ray_intersection(const Ray& ray) {
+    /*
+    https://kylehalladay.com/blog/tutorial/math/2013/12/24/Ray-Sphere-Intersection.html
+    t1, t2: the distance from the ray origin to the intersection points (P1,
+    P2) tc: the distance from the ray origin to the point (P') on the ray
+    halfway between the 2 intersection points t1c: distance from the closest
+    intersection point (P1) to the point (P')
+    */
+    Vector origin_center = reference_point - ray.start;
+    double tc = origin_center.dot(ray.dir);
+    // d: the perpendicular distance from the center to P'
+    double d = sqrt(tc * tc - origin_center.dot(origin_center));
+    double t1c = sqrt(radius * radius - d * d);
+    double t1 = tc - t1c;
+    double t2 = tc + t1c;
+    if (t1 > t2) std::swap(t1, t2);
+    if (t2 < 0) return -1;
+    return t1 > 0 ? t1 : t2;
+}
+
+
+
 // Triangle
+
 Triangle::Triangle(const Vector& a, const Vector& b, const Vector& c)
     : a(a), b(b), c(c) {}
+
 void Triangle::draw() {
     glColor3f(color.r, color.g, color.b);
     draw_triangle(a, b, c);
 }
 
+double Triangle::find_ray_intersection(const Ray& ray) { return -1.0; }
+
+Vector Triangle::get_normal(const Vector& point) const {
+    return (b - a).cross(c - a).normalize();
+}
+
+
+
 // GeneralQuadraticSurface
+
 GeneralQuadraticSurface::GeneralQuadraticSurface(double A, double B, double C,
                                                  double D, double E, double F,
                                                  double G, double H, double I,
@@ -261,20 +454,49 @@ GeneralQuadraticSurface::GeneralQuadraticSurface(double A, double B, double C,
       length(l),
       width(w),
       height(h) {}
+
 void GeneralQuadraticSurface::draw() {}
 
+double GeneralQuadraticSurface::find_ray_intersection(const Ray& ray) {
+    return -1.0;
+}
+
+Vector GeneralQuadraticSurface::get_normal(const Vector& point) const {
+    return Vector(0, 0, 0);
+}
+
+
+
+// Light Source
+
+LightSource::LightSource(const Vector& pos, double r, double g, double b,
+                         LightType type)
+    : light_position(pos), color(r, g, b), type(type) {}
+
+
 // Point Light
+
 PointLight::PointLight(const Vector& pos, double r, double g, double b)
-    : light_position(pos), color{r, g, b} {}
+    : LightSource(pos, r, g, b, POINT) {}
+
 PointLight::~PointLight() {}
 
+
+
 // Spot Light
+
 SpotLight::SpotLight(const Vector& pos, double r, double g, double b,
                      const Vector& dir, double angle)
-    : point_light(pos, r, g, b), light_direction(dir), cutoff_angle(angle) {}
+    : LightSource(pos, r, g, b, SPOT), cutoff_angle(angle) {
+    light_direction = dir.normalize();
+}
+
 SpotLight::~SpotLight() {}
 
+
+
 // Helper Functions
+
 void draw_line(const Vector& a, const Vector& b) {
     glBegin(GL_LINES);
     {
@@ -309,22 +531,17 @@ void draw_quad(const Vector& a, const Vector& b, const Vector& c,
 void draw_sphere(double radius, int stack_count, int sector_count) {
     double stack_step = PI / stack_count;
     double sector_step = 2 * PI / sector_count;
-
     std::vector<Vector> points;
-
     for (int i = 0; i <= stack_count; i++) {
         double stack_angle = PI / 2.0 - i * stack_step;  // [-π/2, π/2]
         for (int j = 0; j <= sector_count; j++) {
             double sector_angle = j * sector_step;       // [0, 2π]
-
             double x = radius * cos(stack_angle) * cos(sector_angle);
             double y = radius * cos(stack_angle) * sin(sector_angle);
             double z = radius * sin(stack_angle);
-
             points.push_back(Vector(x, y, z));
         }
     }
-
     for (int i = 0; i < stack_count; i++) {
         int k1 = i * (sector_count + 1);
         int k2 = k1 + sector_count + 1;
@@ -335,11 +552,9 @@ void draw_sphere(double radius, int stack_count, int sector_count) {
             if (i != stack_count - 1)
                 draw_triangle(points[k1 + 1 + j], points[k2 + j],
                               points[k2 + 1 + j]);
-
             draw_line(points[j + k1], points[j + k2]);
             if (i != 0) draw_line(points[j + k1], points[j + k1 + 1]);
         }
     }
-
     points.clear();
 }

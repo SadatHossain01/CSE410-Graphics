@@ -16,8 +16,7 @@ int captured_images;
 
 Camera camera(Vector(125, 125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
 std::vector<Object *> objects;
-std::vector<PointLight *> point_lights;
-std::vector<SpotLight *> spot_lights;
+std::vector<LightSource *> light_sources;
 
 // Function Declarations
 void init();
@@ -61,39 +60,47 @@ void capture() {
     int nearest_idx = -1;
     double t_min = 1e9;
 
-    for (int i = 0; i < image_width; i++) {
-        for (int j = 0; j < image_height; j++) {
+    for (int i = 0; i < image_height; i++) {
+        for (int j = 0; j < image_width; j++) {
             // Calculate current pixel
             Vector cur_pixel =
-                top_left + i * du * camera.right - j * dv * camera.up;
+                top_left + j * du * camera.right - i * dv * camera.up;
 
             // Cast ray from eye to pixel direction
             Ray ray(camera.pos, cur_pixel - camera.pos);
             Color color;
-            for (int i = 0; i < objects.size(); i++) {
-                Object *o = objects[i];
+            for (int k = 0; k < objects.size(); k++) {
+                Object *o = objects[k];
                 double t = o->intersect(ray, color, 0);
                 if (t > 0 && (nearest_idx == -1 || t < t_min)) {
                     t_min = t;
-                    nearest_idx = i;
+                    nearest_idx = k;
                 }
             }
 
             if (nearest_idx != -1) {
+                color = Color(0, 0, 0);
                 t_min = objects[nearest_idx]->intersect(ray, color, 1);
-                image.set_pixel(j, i, color.r, color.g, color.b);
+                color.r = std::min(1.0, color.r);
+                color.g = std::min(1.0, color.g);
+                color.b = std::min(1.0, color.b);
+                color.r = std::max(0.0, color.r);
+                color.g = std::max(0.0, color.g);
+                color.b = std::max(0.0, color.b);
+                image.set_pixel(j, i, 255 * color.r, 255 * color.g,
+                                255 * color.b);
             }
         }
     }
 
     image.save_image("Output_" + std::to_string(10 + ++captured_images) +
                      ".bmp");
+    printf("Image captured\n");
 }
 
 void free_memory() {
-    for (auto &object : objects) delete object;
-    for (auto &point_light : point_lights) delete point_light;
-    for (auto &spot_light : spot_lights) delete spot_light;
+    for (auto object : objects) delete object;
+    for (auto light : light_sources) delete light;
 }
 
 void load_data(const std::string &filename) {
@@ -187,8 +194,8 @@ void load_data(const std::string &filename) {
         double r, g, b;
         file >> r >> g >> b;
         Vector position(x, y, z);
-        PointLight *pl = new PointLight(position, r, g, b);
-        point_lights.push_back(pl);
+        LightSource *pl = new PointLight(position, r, g, b);
+        light_sources.push_back(pl);
     }
 
     // Spot Light Sources
@@ -205,8 +212,8 @@ void load_data(const std::string &filename) {
         double angle;
         file >> angle;
         Vector direction(direction_x, direction_y, direction_z);
-        SpotLight *sl = new SpotLight(position, r, g, b, direction, angle);
-        spot_lights.push_back(sl);
+        LightSource *sl = new SpotLight(position, r, g, b, direction, angle);
+        light_sources.push_back(sl);
     }
 
     file.close();
@@ -222,7 +229,7 @@ void display() {
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
 
-    for (auto &they : objects) they->draw();
+    for (auto they : objects) they->draw();
     glutSwapBuffers();
 }
 

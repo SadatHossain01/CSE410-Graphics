@@ -15,16 +15,27 @@ class Sphere;
 class Triangle;
 class GeneralQuadraticSurface;
 class Floor;
-class PointLight;
-class SpotLight;
+struct LightSource;
+struct PointLight;
+struct SpotLight;
 
 const double PI = 2 * acos(0.0);
 const double EPS = 1e-8;
+
+extern std::vector<Object*> objects;
+extern std::vector<LightSource*> light_sources;
+extern int reflection_depth;
 
 struct Color {
    public:
     double r, g, b;
     Color(double r = 0, double g = 0, double b = 0);
+    Color operator+(const Color& c) const;
+    Color operator+=(const Color& c);
+    Color operator*(const double& d) const;
+    Color operator*(const Color& c) const;
+    Color operator*=(const double& d);
+    friend Color operator*(const double& d, const Color& c);
 };
 
 struct PhongCoefficients {
@@ -44,6 +55,7 @@ struct Vector {
     Vector operator+=(const Vector& v);
     Vector operator-(const Vector& v) const;
     Vector operator-=(const Vector& v);
+    Vector operator-() const;
     Vector operator*(const double& d) const;
     friend Vector operator*(const double& d, const Vector& v);
     Vector operator*=(const double& d);
@@ -108,7 +120,10 @@ class Object {
     Object(const Vector& ref = Vector(0, 0, 0));
     ~Object();
     virtual void draw() = 0;
-    virtual double intersect(const Ray& ray, const Color& color, int level);
+    virtual Vector get_normal(const Vector& point) const = 0;
+    virtual Color get_color_at(const Vector& point) const;
+    double intersect(const Ray& ray, Color& color, int level);
+    virtual double find_ray_intersection(const Ray& ray) = 0;
     void set_color(double r, double g, double b);
     void set_shine(int shine);
     void set_coefficients(double ambient, double diffuse, double specular,
@@ -121,7 +136,10 @@ class Floor : public Object {
 
    public:
     Floor(double floor_width, double tile_width);
-    void draw();
+    void draw() override;
+    Vector get_normal(const Vector& point) const override;
+    Color get_color_at(const Vector& pt) const override;
+    double find_ray_intersection(const Ray& ray) override;
 };
 
 class Sphere : public Object {
@@ -130,7 +148,9 @@ class Sphere : public Object {
 
    public:
     Sphere(const Vector& center, double radius);
-    void draw();
+    void draw() override;
+    Vector get_normal(const Vector& point) const override;
+    double find_ray_intersection(const Ray& ray) override;
 };
 
 class Triangle : public Object {
@@ -139,7 +159,9 @@ class Triangle : public Object {
 
    public:
     Triangle(const Vector& a, const Vector& b, const Vector& c);
-    void draw();
+    void draw() override;
+    Vector get_normal(const Vector& point) const override;
+    double find_ray_intersection(const Ray& ray) override;
 };
 
 class GeneralQuadraticSurface : public Object {
@@ -151,26 +173,30 @@ class GeneralQuadraticSurface : public Object {
     GeneralQuadraticSurface(double A, double B, double C, double D, double E,
                             double F, double G, double H, double I, double J,
                             const Vector& ref, double l, double w, double h);
-    void draw();
+    void draw() override;
+    Vector get_normal(const Vector& point) const override;
+    double find_ray_intersection(const Ray& ray) override;
 };
 
-class PointLight {
-   protected:
-    Vector light_position;  // position of the light source
+struct LightSource {
+   public:
     Color color;
+    Vector light_position;  // position of the light source
+    enum LightType { POINT, SPOT } type;
+    LightSource(const Vector& pos, double r, double g, double b,
+                LightType type);
+};
 
+struct PointLight : public LightSource {
    public:
     PointLight(const Vector& pos, double r, double g, double b);
     ~PointLight();
 };
 
-class SpotLight {
-   protected:
-    PointLight point_light;
+struct SpotLight : public LightSource {
+   public:
     Vector light_direction;  // direction of the light source
     double cutoff_angle;     // in degrees
-
-   public:
     SpotLight(const Vector& pos, double r, double g, double b,
               const Vector& dir, double angle);
     ~SpotLight();
