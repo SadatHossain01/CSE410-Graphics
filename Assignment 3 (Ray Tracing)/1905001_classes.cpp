@@ -411,9 +411,10 @@ double Sphere::find_ray_intersection(const Ray& ray) {
     double tc = origin_center.dot(ray.dir);
     if (tc < EPS) return -1;
     // d: the perpendicular distance from the center to P'
-    double d = sqrt(tc * tc - origin_center.dot(origin_center));
-    if (d > radius - EPS) return -1;
-    double t1c = sqrt(radius * radius - d * d);
+    double d_squared = tc * tc - origin_center.dot(origin_center);
+    double radius_squared = radius * radius;
+    if (d_squared > radius_squared) return -1;
+    double t1c = sqrt(radius_squared - d_squared);
     double t1 = tc - t1c;
     double t2 = tc + t1c;
     if (t1 > t2) std::swap(t1, t2);
