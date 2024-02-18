@@ -34,6 +34,7 @@ struct Color {
     Color operator*(const double& d) const;
     Color operator*(const Color& c) const;
     Color operator*=(const double& d);
+    void clamp();
     friend Color operator*(const double& d, const Color& c);
 };
 

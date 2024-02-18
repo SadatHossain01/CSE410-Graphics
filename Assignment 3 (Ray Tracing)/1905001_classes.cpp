@@ -4,6 +4,12 @@
 
 Color::Color(double r, double g, double b) : r(r), g(g), b(b) {}
 
+void Color::clamp() {
+    r = std::min(1.0, std::max(0.0, r));
+    g = std::min(1.0, std::max(0.0, g));
+    b = std::min(1.0, std::max(0.0, b));
+}
+
 Color Color::operator+(const Color& c) const {
     return Color(r + c.r, g + c.g, b + c.b);
 }

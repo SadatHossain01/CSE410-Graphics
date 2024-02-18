@@ -9,6 +9,8 @@
 #include "bitmap_image.hpp"
 
 std::string input_file;
+bool use_multithreading = true;
+unsigned int num_threads = std::thread::hardware_concurrency();
 
 int reflection_depth;
 int window_width = 1284, window_height = 768;
@@ -43,6 +45,8 @@ void init() {
 }
 
 void capture() {
+    std::chrono::steady_clock::time_point start =
+        std::chrono::steady_clock::now();
     bitmap_image image(image_width, image_height);
     image.set_all_channels(0, 0, 0);
 
@@ -58,47 +62,61 @@ void capture() {
     // Choose middle of the grid cell
     top_left += 0.5 * du * camera.right - 0.5 * dv * camera.up;
 
-    int nearest_idx;
-    double t_min;
+    auto render_segment = [&](int start_col, int end_col) {
+        for (int i = start_col; i < end_col; i++) {
+            for (int j = 0; j < image_height; j++) {
+                // Calculate current pixel
+                Vector cur_pixel =
+                    top_left + i * du * camera.right - j * dv * camera.up;
 
-    for (int i = 0; i < image_width; i++) {
-        for (int j = 0; j < image_height; j++) {
-            // Calculate current pixel
-            Vector cur_pixel =
-                top_left + i * du * camera.right - j * dv * camera.up;
+                // Cast ray from eye to pixel
+                Ray ray(camera.pos, cur_pixel - camera.pos);
 
-            // Cast ray from eye to pixel
-            Ray ray(camera.pos, cur_pixel - camera.pos);
-
-            nearest_idx = -1;
-            t_min = 1e9;
-            for (int k = 0; k < objects.size(); k++) {
-                Object *o = objects[k];
-                double t = o->find_ray_intersection(ray);
-                if (t > 0 && t < t_min) {
-                    t_min = t;
-                    nearest_idx = k;
+                int nearest_idx = -1;
+                double t_min = 1e9;
+                for (int k = 0; k < objects.size(); k++) {
+                    Object *o = objects[k];
+                    double t = o->find_ray_intersection(ray);
+                    if (t > 0 && t < t_min) {
+                        t_min = t;
+                        nearest_idx = k;
+                    }
                 }
+
+                if (nearest_idx == -1) continue;
+
+                Color color(0, 0, 0);
+                objects[nearest_idx]->intersect(
+                    ray, color,
+                    reflection_depth);  // return value doesn't matter
+                color.clamp();
+
+                image.set_pixel(i, j, 255 * color.r, 255 * color.g,
+                                255 * color.b);
             }
-
-            if (nearest_idx == -1) continue;
-
-            Color color(0, 0, 0);
-            double t = objects[nearest_idx]->intersect(
-                ray, color, reflection_depth);  // return value doesn't matter
-            color.r = std::min(1.0, color.r);
-            color.g = std::min(1.0, color.g);
-            color.b = std::min(1.0, color.b);
-            color.r = std::max(0.0, color.r);
-            color.g = std::max(0.0, color.g);
-            color.b = std::max(0.0, color.b);
-            image.set_pixel(i, j, 255 * color.r, 255 * color.g, 255 * color.b);
         }
+    };
+
+    if (use_multithreading && num_threads > 1) {
+        std::vector<std::thread> threads;
+        int cols_per_thread = image_width / num_threads;
+        for (int i = 0; i < num_threads; i++) {
+            int start_col = i * cols_per_thread;
+            int end_col = (i == num_threads - 1) ? image_width
+                                                 : (i + 1) * cols_per_thread;
+            threads.push_back(std::thread(render_segment, start_col, end_col));
+        }
+        for (auto &t : threads) t.join();
+    } else {
+        render_segment(0, image_width);
     }
 
     image.save_image("Output_" + std::to_string(10 + ++captured_images) +
                      ".bmp");
-    printf("Image captured\n");
+    double time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::steady_clock::now() - start)
+                              .count();
+    printf("Image captured in %.5lf seconds\n", time_elapsed / 1000);
 }
 
 void free_memory() {
