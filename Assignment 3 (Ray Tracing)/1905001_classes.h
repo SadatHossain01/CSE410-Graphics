@@ -119,7 +119,6 @@ class Object {
 
    public:
     Object(const Vector& ref = Vector(0, 0, 0));
-    ~Object();
     virtual void draw() = 0;
     virtual Vector get_normal(const Vector& point) const = 0;
     virtual Color get_color_at(const Vector& point) const;
@@ -130,6 +129,7 @@ class Object {
     void set_coefficients(double ambient, double diffuse, double specular,
                           double reflection);
     virtual void print() const = 0;
+    virtual ~Object();
 };
 
 class Floor : public Object {
@@ -192,12 +192,12 @@ struct LightSource {
     enum LightType { POINT, SPOT } type;
     LightSource(const Vector& pos, double r, double g, double b,
                 LightType type);
+    virtual ~LightSource();
 };
 
 struct PointLight : public LightSource {
    public:
     PointLight(const Vector& pos, double r, double g, double b);
-    ~PointLight();
 };
 
 struct SpotLight : public LightSource {
@@ -206,12 +206,6 @@ struct SpotLight : public LightSource {
     double cutoff_angle;     // in degrees
     SpotLight(const Vector& pos, double r, double g, double b,
               const Vector& dir, double angle);
-    ~SpotLight();
 };
-
-// Function Prototypes
-void draw_line(const Vector& a, const Vector& b);
-void draw_triangle(const Vector& a, const Vector& b, const Vector& c);
-double determinant(double v[3][3]);
 
 #endif

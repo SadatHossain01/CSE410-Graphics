@@ -495,19 +495,26 @@ Triangle::Triangle(const Vector& a, const Vector& b, const Vector& c)
 
 void Triangle::draw() {
     glColor3f(color.r, color.g, color.b);
-    draw_triangle(a, b, c);
-}
-
-double determinant(double matrix[3][3]) {
-    return matrix[0][0] *
-               (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) -
-           matrix[0][1] *
-               (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) +
-           matrix[0][2] *
-               (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+    glBegin(GL_TRIANGLES);
+    {
+        glVertex3f(a.x, a.y, a.z);
+        glVertex3f(b.x, b.y, b.z);
+        glVertex3f(c.x, c.y, c.z);
+    }
+    glEnd();
 }
 
 double Triangle::find_ray_intersection(Ray ray) {
+    auto determinant = [](const double(&matrix)[3][3]) -> double {
+        return matrix[0][0] *
+                   (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) -
+               matrix[0][1] *
+                   (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) +
+               matrix[0][2] *
+                   (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+    };
+
+
     double beta_matrix[3][3] = {{a.x - ray.origin.x, a.x - c.x, ray.dir.x},
                                 {a.y - ray.origin.y, a.y - c.y, ray.dir.y},
                                 {a.z - ray.origin.z, a.z - c.z, ray.dir.z}};
@@ -571,14 +578,12 @@ double GeneralQuadraticSurface::find_ray_intersection(Ray ray) {
     /*
     Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fzx + Gx + Hy + Iz + J = 0
     Ray Equation:
-    // x = x0 + t * dx
-    // y = y0 + t * dy
-    // z = z0 + t * dz
-    // where (x0, y0, z0) is the origin of the ray
-    // and (dx, dy, dz) is the direction of the ray
-    // and t is the parameter
-    // substitute these values in the quadratic equation
-    // and solve for t
+    x = x0 + t * dx
+    y = y0 + t * dy
+    z = z0 + t * dz
+    Where, (x0, y0, z0) is the origin of the ray and (dx, dy, dz) is the
+    direction of the ray and t is the parameter.
+    Substitute these values in the quadratic equation and solve for t
     */
     double a = A * ray.dir.dot(ray.dir) + B * ray.dir.y * ray.dir.y +
                C * ray.dir.z * ray.dir.z + D * ray.dir.x * ray.dir.y +
@@ -596,14 +601,30 @@ double GeneralQuadraticSurface::find_ray_intersection(Ray ray) {
         E * ray.origin.y * ray.origin.z + F * ray.origin.z * ray.origin.x +
         G * ray.origin.x + H * ray.origin.y + I * ray.origin.z + J;
 
+    auto valid = [&](double t) {
+        if (length < EPS || width < EPS || height < EPS) return true;
+        Vector intersection_point = ray.origin + ray.dir * t;
+        return intersection_point.x >= reference_point.x &&
+               intersection_point.x <= reference_point.x + length &&
+               intersection_point.y >= reference_point.y &&
+               intersection_point.y <= reference_point.y + width &&
+               intersection_point.z >= reference_point.z &&
+               intersection_point.z <= reference_point.z + height;
+    };
+
     double discriminant = b * b - 4 * a * c;
     if (discriminant < 0) return -1.0;
     double t_minus = (-b - sqrt(discriminant)) / (2 * a);
     double t_plus = (-b + sqrt(discriminant)) / (2 * a);
-    if (t_minus < 0 && t_plus < 0) return -1.0;
-    if (t_minus < 0) return t_plus;
-    if (t_plus < 0) return t_minus;
-    return std::min(t_minus, t_plus);
+
+    if (t_minus < 0) {
+        if (t_plus < 0) return -1.0;
+        return valid(t_plus) ? t_plus : -1.0;
+    } else {
+        if (valid(t_minus)) return t_minus;
+        if (t_plus < 0) return -1.0;
+        return valid(t_plus) ? t_plus : -1.0;
+    }
 }
 
 Vector GeneralQuadraticSurface::get_normal(const Vector& point) const {
@@ -625,14 +646,13 @@ void GeneralQuadraticSurface::print() const {
 LightSource::LightSource(const Vector& pos, double r, double g, double b,
                          LightType type)
     : light_position(pos), color(r, g, b), type(type) {}
+LightSource::~LightSource() {}
 
 
 // Point Light
 
 PointLight::PointLight(const Vector& pos, double r, double g, double b)
     : LightSource(pos, r, g, b, POINT) {}
-
-PointLight::~PointLight() {}
 
 
 
@@ -642,29 +662,4 @@ SpotLight::SpotLight(const Vector& pos, double r, double g, double b,
                      const Vector& dir, double angle)
     : LightSource(pos, r, g, b, SPOT), cutoff_angle(angle) {
     light_direction = dir.normalize();
-}
-
-SpotLight::~SpotLight() {}
-
-
-
-// Helper Functions
-
-void draw_line(const Vector& a, const Vector& b) {
-    glBegin(GL_LINES);
-    {
-        glVertex3f(a.x, a.y, a.z);
-        glVertex3f(b.x, b.y, b.z);
-    }
-    glEnd();
-}
-
-void draw_triangle(const Vector& a, const Vector& b, const Vector& c) {
-    glBegin(GL_TRIANGLES);
-    {
-        glVertex3f(a.x, a.y, a.z);
-        glVertex3f(b.x, b.y, b.z);
-        glVertex3f(c.x, c.y, c.z);
-    }
-    glEnd();
 }
