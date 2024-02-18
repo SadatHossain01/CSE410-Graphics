@@ -62,7 +62,6 @@ void capture() {
     double t_min;
 
     for (int i = 0; i < image_width; i++) {
-        printf("i = %d\n", i + 1);
         for (int j = 0; j < image_height; j++) {
             // Calculate current pixel
             Vector cur_pixel =
@@ -184,9 +183,8 @@ void load_data(const std::string &filename) {
 
     // The Floor
     Object *floor = new Floor(1000, 20);
-    // set color
-    // set coefficients
-    // set shine
+    floor->set_coefficients(0.4, 0.2, 0.2, 0.2);
+    floor->set_shine(5);
     objects.push_back(floor);
 
     // Point Light Sources

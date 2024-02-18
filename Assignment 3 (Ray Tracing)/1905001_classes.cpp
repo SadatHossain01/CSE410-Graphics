@@ -415,8 +415,8 @@ void Floor::print() const {
 }
 
 Color Floor::get_color_at(const Vector& pt) const {
-    int i = (pt.x - (-floor_width / 2.0)) / tile_width;
-    int j = (pt.y - (-floor_width / 2.0)) / tile_width;
+    int i = (pt.x - reference_point.x) / tile_width;
+    int j = (pt.y - reference_point.y) / tile_width;
     if ((i + j) % 2 == 0) return Color(0, 0, 0);
     return Color(1, 1, 1);
 }
@@ -424,10 +424,15 @@ Color Floor::get_color_at(const Vector& pt) const {
 double Floor::find_ray_intersection(Ray ray) {
     Vector normal = get_normal(reference_point);
     double denom = normal.dot(ray.dir);
-
     if (fabs(denom) < EPS) return -1.0;
-    Vector p = reference_point - ray.origin;
-    double t = p.dot(normal) / denom;
+    double t = -(normal.dot(ray.origin) - normal.dot(reference_point)) / denom;
+
+    Vector intersection_point = ray.origin + ray.dir * t;
+    if (intersection_point.x < reference_point.x ||
+        intersection_point.x > reference_point.x + floor_width ||
+        intersection_point.y < reference_point.y ||
+        intersection_point.y > reference_point.y + floor_width)
+        return -1.0;
     return t;
 }
 
@@ -556,7 +561,44 @@ GeneralQuadraticSurface::GeneralQuadraticSurface(double A, double B, double C,
 
 void GeneralQuadraticSurface::draw() {}
 
-double GeneralQuadraticSurface::find_ray_intersection(Ray ray) { return -1.0; }
+double GeneralQuadraticSurface::find_ray_intersection(Ray ray) {
+    /*
+    Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fzx + Gx + Hy + Iz + J = 0
+    Ray Equation:
+    // x = x0 + t * dx
+    // y = y0 + t * dy
+    // z = z0 + t * dz
+    // where (x0, y0, z0) is the origin of the ray
+    // and (dx, dy, dz) is the direction of the ray
+    // and t is the parameter
+    // substitute these values in the quadratic equation
+    // and solve for t
+    */
+    double a = A * ray.dir.dot(ray.dir) + B * ray.dir.y * ray.dir.y +
+               C * ray.dir.z * ray.dir.z + D * ray.dir.x * ray.dir.y +
+               E * ray.dir.y * ray.dir.z + F * ray.dir.z * ray.dir.x;
+    double b = 2 * A * ray.origin.x * ray.dir.x +
+               2 * B * ray.origin.y * ray.dir.y +
+               2 * C * ray.origin.z * ray.dir.z +
+               D * (ray.origin.x * ray.dir.y + ray.origin.y * ray.dir.x) +
+               E * (ray.origin.y * ray.dir.z + ray.origin.z * ray.dir.y) +
+               F * (ray.origin.z * ray.dir.x + ray.origin.x * ray.dir.z) +
+               G * ray.dir.x + H * ray.dir.y + I * ray.dir.z;
+    double c =
+        A * ray.origin.x * ray.origin.x + B * ray.origin.y * ray.origin.y +
+        C * ray.origin.z * ray.origin.z + D * ray.origin.x * ray.origin.y +
+        E * ray.origin.y * ray.origin.z + F * ray.origin.z * ray.origin.x +
+        G * ray.origin.x + H * ray.origin.y + I * ray.origin.z + J;
+
+    double discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return -1.0;
+    double t_minus = (-b - sqrt(discriminant)) / (2 * a);
+    double t_plus = (-b + sqrt(discriminant)) / (2 * a);
+    if (t_minus < 0 && t_plus < 0) return -1.0;
+    if (t_minus < 0) return t_plus;
+    if (t_plus < 0) return t_minus;
+    return std::min(t_minus, t_plus);
+}
 
 Vector GeneralQuadraticSurface::get_normal(const Vector& point) const {
     return Vector(2 * A * point.x + D * point.y + F * point.z + G,
