@@ -277,6 +277,9 @@ double Object::intersect(const Ray& ray, Color& color, int level) {
 
     // Normal at intersection point
     Vector surface_normal = get_normal(intersection_point);
+    if (ray.dir.dot(surface_normal) > 0)
+        surface_normal = -surface_normal;  // mainly for triangle, floor and
+                                           // general quadratic surface
 
     for (LightSource* ls : light_sources) {
         Ray light_ray(
@@ -378,22 +381,31 @@ Floor::Floor(double floor_width, double tile_width)
       tile_width(tile_width) {}
 
 void Floor::draw() {
+    double cur_x = -floor_width / 2.0;
+    double y_start = -floor_width / 2.0;
     int tile_count = floor_width / tile_width;
-    for (int i = 0; i < tile_count; i++) {
-        for (int j = 0; j < tile_count; j++) {
-            glPushMatrix();
-            {
+
+    glPushMatrix();
+    {
+        for (int i = 0; i < tile_count; i++) {
+            double cur_y = y_start;
+            for (int j = 0; j < tile_count; j++) {
                 if ((i + j) % 2 == 0) glColor3f(0, 0, 0);
                 else glColor3f(1, 1, 1);
-                glTranslatef(this->reference_point.x + i * tile_width,
-                             this->reference_point.y + j * tile_width, 0);
-                draw_quad(Vector(0, 0, 0), Vector(tile_width, 0, 0),
-                          Vector(tile_width, tile_width, 0),
-                          Vector(0, tile_width, 0));
+                glBegin(GL_QUADS);
+                {
+                    glVertex3f(cur_x, cur_y, 0.0);
+                    glVertex3f(cur_x + tile_width, cur_y, 0.0);
+                    glVertex3f(cur_x + tile_width, cur_y + tile_width, 0.0);
+                    glVertex3f(cur_x, cur_y + tile_width, 0.0);
+                }
+                glEnd();
+                cur_y += tile_width;
             }
-            glPopMatrix();
+            cur_x += tile_width;
         }
     }
+    glPopMatrix();
 }
 
 void Floor::print() const {
@@ -403,21 +415,23 @@ void Floor::print() const {
 }
 
 Color Floor::get_color_at(const Vector& pt) const {
-    int i = (pt.x - reference_point.x) / tile_width;
-    int j = (pt.y - reference_point.y) / tile_width;
+    int i = (pt.x - (-floor_width / 2.0)) / tile_width;
+    int j = (pt.y - (-floor_width / 2.0)) / tile_width;
     if ((i + j) % 2 == 0) return Color(0, 0, 0);
     return Color(1, 1, 1);
 }
 
 double Floor::find_ray_intersection(Ray ray) {
-    if (fabs(ray.dir.z) <= EPS) return -1.0;
-    double t = -ray.origin.z / ray.dir.z;
-    if (t < 0) return -1.0;
+    Vector normal = get_normal(reference_point);
+    double denom = normal.dot(ray.dir);
+
+    if (fabs(denom) < EPS) return -1.0;
+    Vector p = reference_point - ray.origin;
+    double t = p.dot(normal) / denom;
     return t;
 }
 
 Vector Floor::get_normal(const Vector& point) const { return Vector(0, 0, 1); }
-
 
 
 // Sphere
@@ -429,7 +443,7 @@ void Sphere::draw() {
     glColor3f(color.r, color.g, color.b);
     glPushMatrix();
     glTranslatef(reference_point.x, reference_point.y, reference_point.z);
-    draw_sphere(radius, 50, 50);
+    glutSolidSphere(radius, 50, 50);
     glPopMatrix();
 }
 
@@ -473,7 +487,40 @@ void Triangle::draw() {
     draw_triangle(a, b, c);
 }
 
-double Triangle::find_ray_intersection(Ray ray) { return -1.0; }
+double determinant(double matrix[3][3]) {
+    return matrix[0][0] *
+               (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) -
+           matrix[0][1] *
+               (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) +
+           matrix[0][2] *
+               (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+}
+
+double Triangle::find_ray_intersection(Ray ray) {
+    double beta_matrix[3][3] = {{a.x - ray.origin.x, a.x - c.x, ray.dir.x},
+                                {a.y - ray.origin.y, a.y - c.y, ray.dir.y},
+                                {a.z - ray.origin.z, a.z - c.z, ray.dir.z}};
+
+    double gamma_matrix[3][3] = {{a.x - b.x, a.x - ray.origin.x, ray.dir.x},
+                                 {a.y - b.y, a.y - ray.origin.y, ray.dir.y},
+                                 {a.z - b.z, a.z - ray.origin.z, ray.dir.z}};
+
+    double t_matrix[3][3] = {{a.x - b.x, a.x - c.x, a.x - ray.origin.x},
+                             {a.y - b.y, a.y - c.y, a.y - ray.origin.y},
+                             {a.z - b.z, a.z - c.z, a.z - ray.origin.z}};
+
+    double A_matrix[3][3] = {{a.x - b.x, a.x - c.x, ray.dir.x},
+                             {a.y - b.y, a.y - c.y, ray.dir.y},
+                             {a.z - b.z, a.z - c.z, ray.dir.z}};
+    double A_det = determinant(A_matrix);
+
+    double beta = determinant(beta_matrix) / A_det;
+    double gamma = determinant(gamma_matrix) / A_det;
+    double t = determinant(t_matrix) / A_det;
+
+    if (beta + gamma < 1 && beta > 0 && gamma > 0 && t > 0) return t;
+    return -1.0;
+}
 
 Vector Triangle::get_normal(const Vector& point) const {
     return (b - a).cross(c - a).normalize();
@@ -572,20 +619,4 @@ void draw_triangle(const Vector& a, const Vector& b, const Vector& c) {
         glVertex3f(c.x, c.y, c.z);
     }
     glEnd();
-}
-
-void draw_quad(const Vector& a, const Vector& b, const Vector& c,
-               const Vector& d) {
-    glBegin(GL_QUADS);
-    {
-        glVertex3f(a.x, a.y, a.z);
-        glVertex3f(b.x, b.y, b.z);
-        glVertex3f(c.x, c.y, c.z);
-        glVertex3f(d.x, d.y, d.z);
-    }
-    glEnd();
-}
-
-void draw_sphere(double radius, int stack_count, int sector_count) {
-    glutSolidSphere(radius, sector_count, stack_count);
 }

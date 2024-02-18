@@ -8,8 +8,8 @@
 struct Color;
 struct PhongCoefficients;
 struct Vector;
-struct Camera;
 struct Ray;
+struct Camera;
 class Object;
 class Sphere;
 class Triangle;
@@ -211,8 +211,6 @@ struct SpotLight : public LightSource {
 // Function Prototypes
 void draw_line(const Vector& a, const Vector& b);
 void draw_triangle(const Vector& a, const Vector& b, const Vector& c);
-void draw_quad(const Vector& a, const Vector& b, const Vector& c,
-               const Vector& d);
-void draw_sphere(double radius, int stacks, int sectors);
+double determinant(double v[3][3]);
 
 #endif

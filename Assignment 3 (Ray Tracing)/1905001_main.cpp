@@ -8,6 +8,8 @@
 #include "1905001_classes.h"
 #include "bitmap_image.hpp"
 
+std::string input_file;
+
 int reflection_depth;
 int window_width = 1284, window_height = 768;
 int image_width, image_height;
@@ -32,12 +34,12 @@ void init() {
     glClearColor(0.0f, 0.0f, 0.0f,
                  1.0f);  // Set background color to black and opaque
 
-    load_data("test.txt");
+    load_data(input_file);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    gluPerspective(view_angle, 1, 1, 1000.0);
+    gluPerspective(view_angle, (double)window_width / window_height, 1, 1000.0);
 }
 
 void capture() {
@@ -60,6 +62,7 @@ void capture() {
     double t_min;
 
     for (int i = 0; i < image_width; i++) {
+        printf("i = %d\n", i + 1);
         for (int j = 0; j < image_height; j++) {
             // Calculate current pixel
             Vector cur_pixel =
@@ -229,7 +232,6 @@ void display() {
               camera.pos.x + camera.look.x, camera.pos.y + camera.look.y,
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
-
     for (Object *they : objects) they->draw();
     glutSwapBuffers();
 }
@@ -302,10 +304,14 @@ void handle_special_keys(int key, int x, int y) {
 }
 
 int main(int argc, char **argv) {
+    if (argc < 2) input_file = "scene.txt";
+    else input_file = argv[1];
+
     glutInit(&argc, argv);
     glutInitWindowSize(window_width, window_height);
     glutInitWindowPosition(100, 100);
-    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+    glEnable(GLUT_MULTISAMPLE);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutCreateWindow("Ray Tracing");
     glutDisplayFunc(display);
     glutKeyboardFunc(handle_keys);
