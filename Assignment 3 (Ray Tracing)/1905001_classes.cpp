@@ -275,6 +275,7 @@ double Object::intersect(const Ray& ray, Color& color, int level) {
     double t_intersect = find_ray_intersection(ray);
     if (level == 0 || t_intersect < 0) return t_intersect;
 
+
     Vector intersection_point = ray.origin + ray.dir * t_intersect;
     Color local_color = get_color_at(intersection_point);
 
@@ -585,7 +586,7 @@ double GeneralQuadraticSurface::find_ray_intersection(Ray ray) {
     direction of the ray and t is the parameter.
     Substitute these values in the quadratic equation and solve for t
     */
-    double a = A * ray.dir.dot(ray.dir) + B * ray.dir.y * ray.dir.y +
+    double a = A * ray.dir.x * ray.dir.x + B * ray.dir.y * ray.dir.y +
                C * ray.dir.z * ray.dir.z + D * ray.dir.x * ray.dir.y +
                E * ray.dir.y * ray.dir.z + F * ray.dir.z * ray.dir.x;
     double b = 2 * A * ray.origin.x * ray.dir.x +

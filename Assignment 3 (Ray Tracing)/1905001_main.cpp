@@ -86,9 +86,7 @@ void capture() {
                 if (nearest_idx == -1) continue;
 
                 Color color(0, 0, 0);
-                objects[nearest_idx]->intersect(
-                    ray, color,
-                    reflection_depth);  // return value doesn't matter
+                objects[nearest_idx]->intersect(ray, color, reflection_depth);
                 color.clamp();
 
                 image.set_pixel(i, j, 255 * color.r, 255 * color.g,

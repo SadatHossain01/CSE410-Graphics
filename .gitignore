@@ -12,7 +12,5 @@ Assignment 2 (Rasterization)/test.cpp
 *.o
 Assignment 3 (Ray Tracing)/demo
 Assignment 3 (Ray Tracing)/test.txt
-Assignment 3 (Ray Tracing)/Output_11.bmp
-Assignment 3 (Ray Tracing)/Output_11.bmp
-Assignment 3 (Ray Tracing)/Output_12.bmp
-Assignment 3 (Ray Tracing)/Output_13.bmp
+Assignment 3 (Ray Tracing)/*.bmp
+!Assignment 3 (Ray Tracing)/Sample_Output.bmp
