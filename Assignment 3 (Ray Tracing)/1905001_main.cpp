@@ -13,7 +13,7 @@ bool use_multithreading = true;
 unsigned int num_threads = std::thread::hardware_concurrency();
 
 int reflection_depth;
-int window_width = 1284, window_height = 768;
+int window_width = 768, window_height = 768;
 int image_width, image_height;
 double view_angle = 80;  // in degrees
 int captured_images;
@@ -249,6 +249,16 @@ void display() {
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
     for (Object *they : objects) they->draw();
+    // for (LightSource *light : light_sources) {
+    //     glColor3f(1.0, 0, 0);
+    //     glPushMatrix();
+    //     {
+    //         glTranslatef(light->light_position.x, light->light_position.y,
+    //                      light->light_position.z);
+    //         glutSolidSphere(1, 10, 10);
+    //     }
+    //     glPopMatrix();
+    // }
     glutSwapBuffers();
 }
 

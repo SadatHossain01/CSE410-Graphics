@@ -602,14 +602,17 @@ double GeneralQuadraticSurface::find_ray_intersection(Ray ray) {
         G * ray.origin.x + H * ray.origin.y + I * ray.origin.z + J;
 
     auto valid = [&](double t) {
-        if (length < EPS || width < EPS || height < EPS) return true;
         Vector intersection_point = ray.origin + ray.dir * t;
-        return intersection_point.x >= reference_point.x &&
-               intersection_point.x <= reference_point.x + length &&
-               intersection_point.y >= reference_point.y &&
-               intersection_point.y <= reference_point.y + width &&
-               intersection_point.z >= reference_point.z &&
-               intersection_point.z <= reference_point.z + height;
+        if (length > EPS &&
+            fabs(intersection_point.x - reference_point.x) > length)
+            return false;
+        if (width > EPS &&
+            fabs(intersection_point.y - reference_point.y) > width)
+            return false;
+        if (height > EPS &&
+            fabs(intersection_point.z - reference_point.z) > height)
+            return false;
+        return true;
     };
 
     double discriminant = b * b - 4 * a * c;
