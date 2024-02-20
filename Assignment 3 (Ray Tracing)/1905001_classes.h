@@ -127,7 +127,7 @@ class Object {
     virtual void draw() = 0;
     virtual Vector get_normal(const Vector& point) const = 0;
     virtual Color get_color_at(const Vector& point) const;
-    void intersect(const Ray& ray, Color& color, int level);
+    virtual void shade(const Ray& ray, Color& color, int level);
     virtual double find_ray_intersection(Ray ray) const = 0;
     void set_color(double r, double g, double b);
     void set_shine(int shine);
@@ -198,6 +198,7 @@ class Prism : public Object {
     Prism(const Vector& a, const Vector& b, const Vector& c, const Vector& d,
           const Vector& e, const Vector& f);
     void draw() override;
+    void shade(const Ray& ray, Color& color, int level) override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(Ray ray) const override;
     void print() const override;
@@ -210,12 +211,14 @@ struct LightSource {
     enum LightType { POINT, SPOT } type;
     LightSource(const Vector& pos, double r, double g, double b,
                 LightType type);
+    virtual void draw() = 0;
     virtual ~LightSource();
 };
 
 struct PointLight : public LightSource {
    public:
     PointLight(const Vector& pos, double r, double g, double b);
+    void draw() override;
 };
 
 struct SpotLight : public LightSource {
@@ -224,6 +227,7 @@ struct SpotLight : public LightSource {
     double cutoff_angle;     // in degrees
     SpotLight(const Vector& pos, double r, double g, double b,
               const Vector& dir, double angle);
+    void draw() override;
 };
 
 #endif

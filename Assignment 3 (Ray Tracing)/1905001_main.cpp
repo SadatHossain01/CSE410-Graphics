@@ -102,7 +102,7 @@ void capture() {
 
                 if (nearest_idx == -1) continue;
                 Color color(0, 0, 0);
-                objects[nearest_idx]->intersect(ray, color, reflection_depth);
+                objects[nearest_idx]->shade(ray, color, reflection_depth);
                 color.clamp();
 
                 image.set_pixel(i, j, 255 * color.r, 255 * color.g,
@@ -280,6 +280,7 @@ void display() {
               camera.up.z);
     // draw_axes();
     for (Object *they : objects) they->draw();
+    // for (LightSource *light : light_sources) light->draw();
     glutSwapBuffers();
 }
 

@@ -25,8 +25,6 @@ Color Color::operator*(const double& d) const {
 
 Color Color::operator*(const Color& c) const {
     Color ret(r * c.r, g * c.g, b * c.b);
-    assert(ret.r >= -EPS && ret.r <= 1 + EPS && ret.g >= -EPS &&
-           ret.g <= 1 + EPS && ret.b >= -EPS && ret.b <= 1 + EPS);
     return ret;
 }
 
@@ -304,10 +302,9 @@ Vector Object::get_refraction(const Vector& normal, const Vector& incident,
     return incident * n + n * cos_theta_i - cos_theta_t * normal;
 }
 
-void Object::intersect(const Ray& ray, Color& color, int level) {
+void Object::shade(const Ray& ray, Color& color, int level) {
     double t_intersect = find_ray_intersection(ray);
     if (level == 0 || t_intersect < 0) return;
-
 
     Vector intersection_point = ray.origin + ray.dir * t_intersect;
     Color local_color = get_color_at(intersection_point);
@@ -386,8 +383,8 @@ void Object::intersect(const Ray& ray, Color& color, int level) {
     if (next_reflection_object_idx == -1) return;
 
     Color reflected_color(0, 0, 0);
-    objects[next_reflection_object_idx]->intersect(reflected_ray,
-                                                   reflected_color, level - 1);
+    objects[next_reflection_object_idx]->shade(reflected_ray, reflected_color,
+                                               level - 1);
     color += reflected_color * phong_coefficients.reflection;
     return;
 }
@@ -662,6 +659,7 @@ void GeneralQuadraticSurface::print() const {
 }
 
 // Prism
+
 Prism::Prism(const Vector& a, const Vector& b, const Vector& c, const Vector& d,
              const Vector& e, const Vector& f)
     : a(a), b(b), c(c), d(d), e(e), f(f) {}
@@ -759,6 +757,131 @@ Vector Prism::get_normal(const Vector& point) const {
     throw std::invalid_argument("Point is not on the prism");
 }
 
+void Prism::shade(const Ray& ray, Color& color, int level) {
+    double t_intersect = find_ray_intersection(ray);
+    if (level == 0 || t_intersect < 0) return;
+
+    Vector intersection_point = ray.origin + ray.dir * t_intersect;
+    Color local_color = get_color_at(intersection_point);
+
+    // Ambient Component
+    color = local_color * phong_coefficients.ambient;
+
+    // Normal at intersection point
+    Vector surface_normal = get_normal(intersection_point);
+    if (ray.dir.dot(surface_normal) > 0)
+        surface_normal = -surface_normal;  // mainly for triangle, floor and
+                                           // general quadratic surface
+
+    for (LightSource* ls : light_sources) {
+        Ray light_ray(
+            ls->light_position,
+            intersection_point -
+                ls->light_position);  // In Lambert's cosine law, the light ray
+                                      // is from the intersection point to the
+                                      // light source
+
+        if (ls->type == LightSource::SPOT) {
+            // Continue with spot light unless the ray cast from light_position
+            // to intersection_point exceeds the cutoff angle
+            SpotLight* sls = (SpotLight*)ls;
+            double dot = light_ray.dir.dot(sls->light_direction);
+            double angle = acos(dot / (light_ray.dir.norm() *
+                                       sls->light_direction.norm())) *
+                           180.0 / PI;
+            if (fabs(angle) >= sls->cutoff_angle) continue;
+        }
+
+        // Check if this ray is obscured by any other object
+        // that is, if this ray reaches any other object before the current one
+        double t_cur = (intersection_point - ls->light_position).norm();
+        if (t_cur < EPS)
+            continue;  // light source is at the intersection point or in front
+
+        bool obscured = false;
+        for (Object* obj : objects) {
+            double t = obj->find_ray_intersection(light_ray);
+            if (t > EPS && t + EPS < t_cur) {
+                obscured = true;
+                break;
+            }
+        }
+        if (obscured) continue;
+
+        // So, the light ray is not obscured by any other object
+
+        // Diffuse Component
+        // Calculate Lambert value using the surface normal and light ray
+        double lambert_value =
+            std::max(0.0, surface_normal.dot(-light_ray.dir));
+        color += ls->color * phong_coefficients.diffuse * lambert_value *
+                 local_color;
+
+        // Specular Component
+        // Find reflected ray for the light ray
+        Ray reflected_ray(intersection_point,
+                          get_reflection(surface_normal, light_ray.dir));
+        // Calculate Phong value using the reflected ray and the view ray
+        double phong_value = std::max(0.0, reflected_ray.dir.dot(-ray.dir));
+        // printf(
+        //     "Phong value = %lf, shine = %d, specular = %lf, ls_color = "
+        //     "%lf, "
+        //     "%lf, %lf, local_color = %lf, %lf, %lf\n",
+        //     phong_value, phong_coefficients.shine,
+        //     phong_coefficients.specular, ls->color.r, ls->color.g,
+        //     ls->color.b, local_color.r, local_color.g, local_color.b);
+        color += ls->color * phong_coefficients.specular *
+                 pow(phong_value, phong_coefficients.shine) * local_color;
+    }
+
+    if (level == 0) return;
+
+    // Prism
+    double k_t =
+        0.8;  // amount of light allowed to go through, later change this
+
+    // Reflection
+    Ray reflected_ray(
+        intersection_point,
+        get_reflection(surface_normal, ray.dir));  // Reflected Ray
+    int next_reflection_object_idx = get_next_reflection_object(reflected_ray);
+    if (next_reflection_object_idx != -1) {
+        Color reflected_color(0, 0, 0);
+        objects[next_reflection_object_idx]->shade(reflected_ray,
+                                                   reflected_color, level - 1);
+        color += reflected_color * (1 - k_t);
+    }
+
+    // Refraction
+    double dot = ray.dir.dot(surface_normal);
+    if (dot < 0) {
+        // going into medium
+        Ray refracted_ray(intersection_point,
+                          get_refraction(surface_normal, ray.dir, 1, 1.5));
+        int next_refraction_object_idx =
+            get_next_reflection_object(refracted_ray);
+        if (next_refraction_object_idx != -1) {
+            Color refracted_color(0, 0, 0);
+            objects[next_refraction_object_idx]->shade(
+                refracted_ray, refracted_color, level - 1);
+            color += refracted_color * k_t;
+        }
+    } else if (dot > 0) {
+        // coming out of medium
+        Ray refracted_ray(intersection_point,
+                          get_refraction(-surface_normal, ray.dir, 1.5, 1));
+        int next_refraction_object_idx =
+            get_next_reflection_object(refracted_ray);
+        if (next_refraction_object_idx != -1) {
+            Color refracted_color(0, 0, 0);
+            objects[next_refraction_object_idx]->shade(
+                refracted_ray, refracted_color, level - 1);
+            color += refracted_color * k_t;
+        }
+    }
+    return;
+}
+
 double Prism::find_ray_intersection(Ray ray) const {
     double t_min = 1e9;
     std::vector<Triangle> triangles = {Triangle(a, b, c), Triangle(d, e, f),
@@ -791,6 +914,14 @@ LightSource::~LightSource() {}
 PointLight::PointLight(const Vector& pos, double r, double g, double b)
     : LightSource(pos, r, g, b, POINT) {}
 
+void PointLight::draw() {
+    glColor3f(1, 1, 0);
+    glPushMatrix();
+    glTranslatef(light_position.x, light_position.y, light_position.z);
+    glutSolidSphere(10, 50, 50);
+    glPopMatrix();
+}
+
 
 
 // Spot Light
@@ -799,4 +930,12 @@ SpotLight::SpotLight(const Vector& pos, double r, double g, double b,
                      const Vector& dir, double angle)
     : LightSource(pos, r, g, b, SPOT), cutoff_angle(angle) {
     light_direction = dir.normalize();
+}
+
+void SpotLight::draw() {
+    glColor3f(0, 1, 1);
+    glPushMatrix();
+    glTranslatef(light_position.x, light_position.y, light_position.z);
+    glutSolidSphere(5, 50, 50);
+    glPopMatrix();
 }
