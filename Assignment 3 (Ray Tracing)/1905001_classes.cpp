@@ -271,9 +271,42 @@ void Object::set_coefficients(double ambient, double diffuse, double specular,
         ambient, diffuse, specular, reflection, phong_coefficients.shine);
 }
 
-double Object::intersect(const Ray& ray, Color& color, int level) {
+Vector Object::get_reflection(const Vector& normal,
+                              const Vector& incident) const {
+    return incident - normal * 2 * incident.dot(normal);
+}
+
+int Object::get_next_reflection_object(Ray reflected_ray) const {
+    // returns the index of the object that the reflected ray intersects with
+    reflected_ray.origin +=
+        reflected_ray.dir * EPS;  // To avoid self-reflection
+
+    int nearest_idx = -1;
+    double t_min_reflection = 1e9;
+
+    for (int k = 0; k < objects.size(); k++) {
+        Object* o = objects[k];
+        double t = o->find_ray_intersection(reflected_ray);
+        if (t > 0 && t < t_min_reflection) {
+            t_min_reflection = t;
+            nearest_idx = k;
+        }
+    }
+
+    return nearest_idx;
+}
+
+Vector Object::get_refraction(const Vector& normal, const Vector& incident,
+                              double n1, double n2) const {
+    double n = n1 / n2;
+    double cos_theta_i = -normal.dot(incident);
+    double cos_theta_t = sqrt(1 - n * n * (1 - cos_theta_i * cos_theta_i));
+    return incident * n + n * cos_theta_i - cos_theta_t * normal;
+}
+
+void Object::intersect(const Ray& ray, Color& color, int level) {
     double t_intersect = find_ray_intersection(ray);
-    if (level == 0 || t_intersect < 0) return t_intersect;
+    if (level == 0 || t_intersect < 0) return;
 
 
     Vector intersection_point = ray.origin + ray.dir * t_intersect;
@@ -334,46 +367,29 @@ double Object::intersect(const Ray& ray, Color& color, int level) {
 
         // Specular Component
         // Find reflected ray for the light ray
-        Ray reflected_ray(
-            intersection_point,
-            light_ray.dir -
-                2 * surface_normal.dot(light_ray.dir) * surface_normal);
+        Ray reflected_ray(intersection_point,
+                          get_reflection(surface_normal, light_ray.dir));
         // Calculate Phong value using the reflected ray and the view ray
         double phong_value = std::max(0.0, reflected_ray.dir.dot(-ray.dir));
         color += ls->color * phong_coefficients.specular *
                  pow(phong_value, phong_coefficients.shine) * local_color;
     }
 
-    if (level == 0) return t_intersect;
-
+    if (level == 0) return;
 
     // Recursive Reflection
     Ray reflected_ray(
         intersection_point,
-        ray.dir - 2 * surface_normal.dot(ray.dir) * surface_normal);
+        get_reflection(surface_normal, ray.dir));  // Reflected Ray
 
-    // To avoid self-reflection
-    reflected_ray.origin += reflected_ray.dir * EPS;
-
-    int nearest_idx = -1;
-    double t_min_reflection = 1e9;
-
-    for (int k = 0; k < objects.size(); k++) {
-        Object* o = objects[k];
-        double t = o->find_ray_intersection(reflected_ray);
-        if (t > 0 && t < t_min_reflection) {
-            t_min_reflection = t;
-            nearest_idx = k;
-        }
-    }
-
-    if (nearest_idx == -1) return t_intersect;
+    int next_reflection_object_idx = get_next_reflection_object(reflected_ray);
+    if (next_reflection_object_idx == -1) return;
 
     Color reflected_color(0, 0, 0);
-    double t = objects[nearest_idx]->intersect(reflected_ray, reflected_color,
-                                               level - 1);
+    objects[next_reflection_object_idx]->intersect(reflected_ray,
+                                                   reflected_color, level - 1);
     color += reflected_color * phong_coefficients.reflection;
-    return t_intersect;
+    return;
 }
 
 Object::~Object() {}

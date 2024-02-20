@@ -117,13 +117,17 @@ class Object {
     Vector reference_point;
     Color color;
     PhongCoefficients phong_coefficients;
+    Vector get_reflection(const Vector& normal, const Vector& incident) const;
+    int get_next_reflection_object(Ray reflected_ray) const;
+    Vector get_refraction(const Vector& normal, const Vector& incident,
+                          double n1, double n2) const;
 
    public:
     Object(const Vector& ref = Vector(0, 0, 0));
     virtual void draw() = 0;
     virtual Vector get_normal(const Vector& point) const = 0;
     virtual Color get_color_at(const Vector& point) const;
-    double intersect(const Ray& ray, Color& color, int level);
+    void intersect(const Ray& ray, Color& color, int level);
     virtual double find_ray_intersection(Ray ray) const = 0;
     void set_color(double r, double g, double b);
     void set_shine(int shine);

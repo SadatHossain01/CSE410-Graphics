@@ -101,7 +101,6 @@ void capture() {
                 }
 
                 if (nearest_idx == -1) continue;
-
                 Color color(0, 0, 0);
                 objects[nearest_idx]->intersect(ray, color, reflection_depth);
                 color.clamp();
