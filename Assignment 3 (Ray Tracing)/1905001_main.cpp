@@ -30,6 +30,7 @@ void handle_keys(unsigned char key, int x, int y);
 void handle_special_keys(int key, int x, int y);
 void load_data(const std::string &filename);
 void capture();
+void draw_axes();
 void free_memory();
 
 void init() {
@@ -42,6 +43,22 @@ void init() {
     glLoadIdentity();
 
     gluPerspective(view_angle, (double)window_width / window_height, 1, 1000.0);
+}
+
+void draw_axes() {
+    glBegin(GL_LINES);
+    glLineWidth(20);
+    glColor3f(1, 0, 0);
+    glVertex3f(200, 0, 0);
+    glVertex3f(0, 0, 0);
+    glColor3f(0, 1, 0);
+    glVertex3f(0, 200, 0);
+    glVertex3f(0, 0, 0);
+    glColor3f(0, 0, 1);
+    glVertex3f(0, 0, 200);
+    glVertex3f(0, 0, 0);
+    glEnd();
+    glLineWidth(1);
 }
 
 void capture() {
@@ -191,6 +208,22 @@ void load_data(const std::string &filename) {
             temp->set_coefficients(ambient, diffuse, specular, reflection);
             temp->set_shine(shine);
             objects.push_back(temp);
+        } else if (type == "prism") {
+            Vector a, b, c, d, e, f;
+            file >> a.x >> a.y >> a.z >> b.x >> b.y >> b.z >> c.x >> c.y >>
+                c.z >> d.x >> d.y >> d.z >> e.x >> e.y >> e.z >> f.x >> f.y >>
+                f.z;
+            double red, green, blue;
+            file >> red >> green >> blue;
+            double ambient, diffuse, specular, reflection;
+            file >> ambient >> diffuse >> specular >> reflection;
+            int shine;
+            file >> shine;
+            Object *temp = new Prism(a, b, c, d, e, f);
+            temp->set_color(red, green, blue);
+            temp->set_coefficients(ambient, diffuse, specular, reflection);
+            temp->set_shine(shine);
+            objects.push_back(temp);
         } else {
             std::cerr << "Error reading file: Unknown object type" << std::endl;
             return;
@@ -246,17 +279,8 @@ void display() {
               camera.pos.x + camera.look.x, camera.pos.y + camera.look.y,
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
+    // draw_axes();
     for (Object *they : objects) they->draw();
-    // for (LightSource *light : light_sources) {
-    //     glColor3f(1.0, 0, 0);
-    //     glPushMatrix();
-    //     {
-    //         glTranslatef(light->light_position.x, light->light_position.y,
-    //                      light->light_position.z);
-    //         glutSolidSphere(1, 10, 10);
-    //     }
-    //     glPopMatrix();
-    // }
     glutSwapBuffers();
 }
 

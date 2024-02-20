@@ -14,6 +14,7 @@ class Object;
 class Sphere;
 class Triangle;
 class GeneralQuadraticSurface;
+class Prism;
 class Floor;
 struct LightSource;
 struct PointLight;
@@ -123,7 +124,7 @@ class Object {
     virtual Vector get_normal(const Vector& point) const = 0;
     virtual Color get_color_at(const Vector& point) const;
     double intersect(const Ray& ray, Color& color, int level);
-    virtual double find_ray_intersection(Ray ray) = 0;
+    virtual double find_ray_intersection(Ray ray) const = 0;
     void set_color(double r, double g, double b);
     void set_shine(int shine);
     void set_coefficients(double ambient, double diffuse, double specular,
@@ -141,7 +142,7 @@ class Floor : public Object {
     void draw() override;
     Vector get_normal(const Vector& point) const override;
     Color get_color_at(const Vector& pt) const override;
-    double find_ray_intersection(Ray ray) override;
+    double find_ray_intersection(Ray ray) const override;
     void print() const override;
 };
 
@@ -153,7 +154,7 @@ class Sphere : public Object {
     Sphere(const Vector& center, double radius);
     void draw() override;
     Vector get_normal(const Vector& point) const override;
-    double find_ray_intersection(Ray ray) override;
+    double find_ray_intersection(Ray ray) const override;
     void print() const override;
 };
 
@@ -165,7 +166,7 @@ class Triangle : public Object {
     Triangle(const Vector& a, const Vector& b, const Vector& c);
     void draw() override;
     Vector get_normal(const Vector& point) const override;
-    double find_ray_intersection(Ray ray) override;
+    double find_ray_intersection(Ray ray) const override;
     void print() const override;
 };
 
@@ -181,7 +182,20 @@ class GeneralQuadraticSurface : public Object {
                             const Vector& ref, double l, double w, double h);
     void draw() override;
     Vector get_normal(const Vector& point) const override;
-    double find_ray_intersection(Ray ray) override;
+    double find_ray_intersection(Ray ray) const override;
+    void print() const override;
+};
+
+class Prism : public Object {
+   private:
+    Vector a, b, c, d, e, f;
+
+   public:
+    Prism(const Vector& a, const Vector& b, const Vector& c, const Vector& d,
+          const Vector& e, const Vector& f);
+    void draw() override;
+    Vector get_normal(const Vector& point) const override;
+    double find_ray_intersection(Ray ray) const override;
     void print() const override;
 };
 

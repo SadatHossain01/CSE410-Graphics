@@ -428,7 +428,7 @@ Color Floor::get_color_at(const Vector& pt) const {
     return Color(1, 1, 1);
 }
 
-double Floor::find_ray_intersection(Ray ray) {
+double Floor::find_ray_intersection(Ray ray) const {
     Vector normal = get_normal(reference_point);
     double denom = normal.dot(ray.dir);
     if (fabs(denom) < EPS) return -1.0;
@@ -463,7 +463,7 @@ Vector Sphere::get_normal(const Vector& point) const {
     return (point - reference_point).normalize();
 }
 
-double Sphere::find_ray_intersection(Ray ray) {
+double Sphere::find_ray_intersection(Ray ray) const {
     Vector center_to_ray_origin = ray.origin - reference_point;
 
     // ray : the ray from eye/light source to the object
@@ -505,7 +505,7 @@ void Triangle::draw() {
     glEnd();
 }
 
-double Triangle::find_ray_intersection(Ray ray) {
+double Triangle::find_ray_intersection(Ray ray) const {
     auto determinant = [](const double(&matrix)[3][3]) -> double {
         return matrix[0][0] *
                    (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) -
@@ -575,7 +575,7 @@ GeneralQuadraticSurface::GeneralQuadraticSurface(double A, double B, double C,
 
 void GeneralQuadraticSurface::draw() {}
 
-double GeneralQuadraticSurface::find_ray_intersection(Ray ray) {
+double GeneralQuadraticSurface::find_ray_intersection(Ray ray) const {
     /*
     Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fzx + Gx + Hy + Iz + J = 0
     Ray Equation:
@@ -643,6 +643,123 @@ void GeneralQuadraticSurface::print() const {
               << reference_point.y << ", " << reference_point.z
               << ") with length " << length << ", width " << width
               << ", height " << height << std::endl;
+}
+
+// Prism
+Prism::Prism(const Vector& a, const Vector& b, const Vector& c, const Vector& d,
+             const Vector& e, const Vector& f)
+    : a(a), b(b), c(c), d(d), e(e), f(f) {}
+
+void Prism::draw() {
+    const double EPS = 0.01;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(color.r, color.g, color.b, 0.8);
+
+    glBegin(GL_TRIANGLES);
+    {
+        glVertex3f(a.x, a.y, a.z);
+        glVertex3f(b.x, b.y, b.z);
+        glVertex3f(c.x, c.y, c.z);
+    }
+    glEnd();
+
+    glBegin(GL_TRIANGLES);
+    {
+        glVertex3f(d.x, d.y, d.z);
+        glVertex3f(e.x, e.y, e.z);
+        glVertex3f(f.x, f.y, f.z);
+    }
+    glEnd();
+
+    glBegin(GL_QUADS);
+    {
+        // bottom one
+        glVertex3f(a.x, a.y, a.z + EPS);
+        glVertex3f(b.x, b.y, b.z + EPS);
+        glVertex3f(e.x, e.y, e.z + EPS);
+        glVertex3f(d.x, d.y, d.z + EPS);
+
+        // left one
+        glVertex3f(b.x + EPS, b.y, b.z);
+        glVertex3f(c.x + EPS, c.y, c.z);
+        glVertex3f(f.x + EPS, f.y, f.z);
+        glVertex3f(e.x + EPS, e.y, e.z);
+
+        // right one
+        glVertex3f(c.x - EPS, c.y, c.z);
+        glVertex3f(a.x - EPS, a.y, a.z);
+        glVertex3f(d.x - EPS, d.y, d.z);
+        glVertex3f(f.x - EPS, f.y, f.z);
+    }
+    glEnd();
+
+    glDisable(GL_BLEND);
+}
+
+Vector Prism::get_normal(const Vector& point) const {
+    auto is_on_triangular_plane = [](const Vector& a, const Vector& b,
+                                     const Vector& c, const Vector& p) -> bool {
+        Vector u = b - a;
+        Vector v = c - a;
+        Vector w = p - a;
+        Vector normal = u.cross(v);
+        double dot = normal.dot(normal);
+        double gamma = (u.cross(w)).dot(normal) / dot;
+        double beta = (w.cross(v)).dot(normal) / dot;
+        double alpha = 1 - beta - gamma;
+        return alpha >= 0 && beta >= 0 && gamma >= 0;
+    };
+
+    auto is_on_rectangular_plane = [&](const Vector& a, const Vector& b,
+                                       const Vector& c, const Vector& d,
+                                       const Vector& p) -> bool {
+        return is_on_triangular_plane(a, b, c, p) ||
+               is_on_triangular_plane(a, c, d, p);
+    };
+
+    auto triangular_normal = [](const Vector& a, const Vector& b,
+                                const Vector& c) -> Vector {
+        return (b - a).cross(c - a).normalize();
+    };
+
+    auto rectangular_normal = [&](const Vector& a, const Vector& b,
+                                  const Vector& c, const Vector& d) -> Vector {
+        if (is_on_triangular_plane(a, b, c, point))
+            return triangular_normal(a, b, c);
+        return triangular_normal(a, c, d);
+    };
+
+    if (is_on_triangular_plane(a, b, c, point))
+        return triangular_normal(a, b, c);
+    if (is_on_triangular_plane(d, e, f, point))
+        return triangular_normal(d, e, f);
+    if (is_on_rectangular_plane(a, b, e, d, point))
+        return rectangular_normal(a, b, e, d);
+    if (is_on_rectangular_plane(b, c, f, e, point))
+        return rectangular_normal(b, c, f, e);
+    if (is_on_rectangular_plane(c, a, d, f, point))
+        return rectangular_normal(c, a, d, f);
+    throw std::invalid_argument("Point is not on the prism");
+}
+
+double Prism::find_ray_intersection(Ray ray) const {
+    double t_min = 1e9;
+    std::vector<Triangle> triangles = {Triangle(a, b, c), Triangle(d, e, f),
+                                       Triangle(a, b, d), Triangle(b, d, e),
+                                       Triangle(a, c, d), Triangle(c, d, f),
+                                       Triangle(b, c, e), Triangle(c, e, f)};
+    for (const Triangle& triangle : triangles) {
+        double t = triangle.find_ray_intersection(ray);
+        if (t > 0 && t < t_min) t_min = t;
+    }
+    return t_min == 1e9 ? -1.0 : t_min;
+    return t_min == 1e9 ? -1.0 : t_min;
+}
+
+void Prism::print() const {
+    std::cout << "Prism with vertices " << a << ", " << b << ", " << c << ", "
+              << d << ", " << e << ", " << f << std::endl;
 }
 
 // Light Source
