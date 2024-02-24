@@ -25,6 +25,7 @@ const double EPS = 1e-8;
 
 extern std::vector<Object*> objects;
 extern std::vector<LightSource*> light_sources;
+extern std::vector<LightSource*> augmented_light_sources;
 
 struct Color {
    public:
@@ -117,6 +118,7 @@ class Object {
     Vector reference_point;
     Color color;
     PhongCoefficients phong_coefficients;
+    double red_refractive_index, green_refractive_index, blue_refractive_index;
     Vector get_reflection(const Vector& normal, const Vector& incident) const;
     int get_next_reflection_object(Ray reflected_ray) const;
     Vector get_refraction(const Vector& normal, const Vector& incident,
@@ -133,6 +135,7 @@ class Object {
     void set_shine(int shine);
     void set_coefficients(double ambient, double diffuse, double specular,
                           double reflection);
+    void set_refractive_indices(double r, double g, double b);
     virtual void print() const = 0;
     virtual ~Object();
 };

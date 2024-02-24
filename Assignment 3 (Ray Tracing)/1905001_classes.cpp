@@ -302,6 +302,12 @@ Vector Object::get_refraction(const Vector& normal, const Vector& incident,
     return incident * n + n * cos_theta_i - cos_theta_t * normal;
 }
 
+void Object::set_refractive_indices(double r, double g, double b) {
+    red_refractive_index = r;
+    green_refractive_index = g;
+    blue_refractive_index = b;
+}
+
 void Object::shade(const Ray& ray, Color& color, int level) {
     double t_intersect = find_ray_intersection(ray);
     if (level == 0 || t_intersect < 0) return;
@@ -617,14 +623,17 @@ double GeneralQuadraticSurface::find_ray_intersection(Ray ray) const {
 
     auto valid = [&](double t) {
         Vector intersection_point = ray.origin + ray.dir * t;
-        if (length > EPS &&
-            fabs(intersection_point.x - reference_point.x) > length)
+        if (fabs(length) > EPS &&
+            (intersection_point.x < reference_point.x - EPS ||
+             intersection_point.x > reference_point.x + length + EPS))
             return false;
-        if (width > EPS &&
-            fabs(intersection_point.y - reference_point.y) > width)
+        if (fabs(width) > EPS &&
+            (intersection_point.y < reference_point.y - EPS ||
+             intersection_point.y > reference_point.y + width + EPS))
             return false;
-        if (height > EPS &&
-            fabs(intersection_point.z - reference_point.z) > height)
+        if (fabs(height) > EPS &&
+            (intersection_point.z < reference_point.z - EPS ||
+             intersection_point.z > reference_point.z + height + EPS))
             return false;
         return true;
     };
@@ -722,7 +731,7 @@ Vector Prism::get_normal(const Vector& point) const {
         double gamma = (u.cross(w)).dot(normal) / dot;
         double beta = (w.cross(v)).dot(normal) / dot;
         double alpha = 1 - beta - gamma;
-        return alpha >= 0 && beta >= 0 && gamma >= 0;
+        return alpha >= -EPS && beta >= -EPS && gamma >= -EPS;
     };
 
     auto is_on_rectangular_plane = [&](const Vector& a, const Vector& b,
@@ -773,7 +782,7 @@ void Prism::shade(const Ray& ray, Color& color, int level) {
         surface_normal = -surface_normal;  // mainly for triangle, floor and
                                            // general quadratic surface
 
-    for (LightSource* ls : light_sources) {
+    for (LightSource* ls : augmented_light_sources) {
         Ray light_ray(
             ls->light_position,
             intersection_point -
@@ -823,13 +832,6 @@ void Prism::shade(const Ray& ray, Color& color, int level) {
                           get_reflection(surface_normal, light_ray.dir));
         // Calculate Phong value using the reflected ray and the view ray
         double phong_value = std::max(0.0, reflected_ray.dir.dot(-ray.dir));
-        // printf(
-        //     "Phong value = %lf, shine = %d, specular = %lf, ls_color = "
-        //     "%lf, "
-        //     "%lf, %lf, local_color = %lf, %lf, %lf\n",
-        //     phong_value, phong_coefficients.shine,
-        //     phong_coefficients.specular, ls->color.r, ls->color.g,
-        //     ls->color.b, local_color.r, local_color.g, local_color.b);
         color += ls->color * phong_coefficients.specular *
                  pow(phong_value, phong_coefficients.shine) * local_color;
     }
@@ -838,7 +840,7 @@ void Prism::shade(const Ray& ray, Color& color, int level) {
 
     // Prism
     double k_t =
-        0.8;  // amount of light allowed to go through, later change this
+        0.3;  // amount of light allowed to go through, later change this
 
     // Reflection
     Ray reflected_ray(
@@ -856,6 +858,7 @@ void Prism::shade(const Ray& ray, Color& color, int level) {
     double dot = ray.dir.dot(surface_normal);
     if (dot < 0) {
         // going into medium
+
         Ray refracted_ray(intersection_point,
                           get_refraction(surface_normal, ray.dir, 1, 1.5));
         int next_refraction_object_idx =
@@ -890,10 +893,9 @@ double Prism::find_ray_intersection(Ray ray) const {
                                        Triangle(b, c, e), Triangle(c, e, f)};
     for (const Triangle& triangle : triangles) {
         double t = triangle.find_ray_intersection(ray);
-        if (t > 0 && t < t_min) t_min = t;
+        if (t > -EPS && t < t_min) t_min = t;
     }
-    return t_min == 1e9 ? -1.0 : t_min;
-    return t_min == 1e9 ? -1.0 : t_min;
+    return t_min > 9e8 ? -1.0 : t_min;
 }
 
 void Prism::print() const {

@@ -21,6 +21,7 @@ int captured_images;
 Camera camera(Vector(125, 125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
 std::vector<Object *> objects;
 std::vector<LightSource *> light_sources;
+std::vector<LightSource *> augmented_light_sources;
 
 // Function Declarations
 void init();
@@ -218,10 +219,13 @@ void load_data(const std::string &filename) {
             file >> ambient >> diffuse >> specular >> reflection;
             int shine;
             file >> shine;
+            double red_ri, green_ri, blue_ri;
+            file >> red_ri >> green_ri >> blue_ri;
             Object *temp = new Prism(a, b, c, d, e, f);
             temp->set_color(red, green, blue);
             temp->set_coefficients(ambient, diffuse, specular, reflection);
             temp->set_shine(shine);
+            temp->set_refractive_indices(red_ri, green_ri, blue_ri);
             objects.push_back(temp);
         } else {
             std::cerr << "Error reading file: Unknown object type" << std::endl;
@@ -246,6 +250,9 @@ void load_data(const std::string &filename) {
         Vector position(x, y, z);
         LightSource *pl = new PointLight(position, r, g, b);
         light_sources.push_back(pl);
+        augmented_light_sources.push_back(new PointLight(position, r, 0, 0));
+        augmented_light_sources.push_back(new PointLight(position, 0, g, 0));
+        augmented_light_sources.push_back(new PointLight(position, 0, 0, b));
     }
 
     // Spot Light Sources
@@ -264,6 +271,12 @@ void load_data(const std::string &filename) {
         Vector direction(direction_x, direction_y, direction_z);
         LightSource *sl = new SpotLight(position, r, g, b, direction, angle);
         light_sources.push_back(sl);
+        augmented_light_sources.push_back(
+            new SpotLight(position, r, 0, 0, direction, angle));
+        augmented_light_sources.push_back(
+            new SpotLight(position, 0, g, 0, direction, angle));
+        augmented_light_sources.push_back(
+            new SpotLight(position, 0, 0, b, direction, angle));
     }
 
     file.close();
