@@ -18,7 +18,8 @@ double view_angle = 80;  // in degrees
 double far_plane_distance = 500.0;
 int captured_images;
 
-Camera camera(Vector(125, -125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
+Camera camera(Vector(-125, -125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2,
+              0.5);
 std::vector<Object *> objects;
 std::vector<LightSource *> light_sources;
 std::vector<LightSource *> augmented_light_sources;
@@ -298,7 +299,7 @@ void display() {
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
     // draw_axes();
-    for (Object *they : objects) they->draw();
+    // for (Object *they : objects) they->draw();
     // for (LightSource *light : light_sources) light->draw();
     glutSwapBuffers();
 }

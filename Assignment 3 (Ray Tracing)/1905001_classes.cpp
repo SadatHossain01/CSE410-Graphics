@@ -276,9 +276,6 @@ Vector Object::get_reflection(const Vector& normal,
 
 int Object::get_next_reflection_object(Ray reflected_ray) const {
     // returns the index of the object that the reflected ray intersects with
-    reflected_ray.origin +=
-        reflected_ray.dir * EPS;  // To avoid self-reflection
-
     int nearest_idx = -1;
     double t_min_reflection = 1e9;
 
@@ -384,6 +381,9 @@ void Object::shade(const Ray& ray, Color& color, int level) {
     Ray reflected_ray(
         intersection_point,
         get_reflection(surface_normal, ray.dir));  // Reflected Ray
+
+    reflected_ray.origin +=
+        reflected_ray.dir * EPS;                   // To avoid self-reflection
 
     int next_reflection_object_idx = get_next_reflection_object(reflected_ray);
     if (next_reflection_object_idx == -1) return;
@@ -920,7 +920,7 @@ void PointLight::draw() {
     glColor3f(1, 1, 0);
     glPushMatrix();
     glTranslatef(light_position.x, light_position.y, light_position.z);
-    glutSolidSphere(10, 50, 50);
+    glutSolidSphere(4, 50, 50);
     glPopMatrix();
 }
 
@@ -938,6 +938,6 @@ void SpotLight::draw() {
     glColor3f(0, 1, 1);
     glPushMatrix();
     glTranslatef(light_position.x, light_position.y, light_position.z);
-    glutSolidSphere(5, 50, 50);
+    glutSolidSphere(2, 50, 50);
     glPopMatrix();
 }
