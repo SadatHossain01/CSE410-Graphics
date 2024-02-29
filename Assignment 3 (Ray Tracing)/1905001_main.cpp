@@ -2,6 +2,7 @@
 #include <windows.h>
 #endif
 
+#include <GL/freeglut.h>
 #include <GL/glut.h>
 #include <bits/stdc++.h>
 
@@ -142,8 +143,15 @@ void capture() {
 }
 
 void free_memory() {
+    std::cout << "Freeing memory..." << std::endl;
     for (Object *object : objects) delete object;
+    objects.clear();
+
     for (LightSource *light : light_sources) delete light;
+    light_sources.clear();
+
+    for (LightSource *light : augmented_light_sources) delete light;
+    augmented_light_sources.clear();
 }
 
 void load_data(const std::string &filename) {
@@ -300,7 +308,7 @@ void display() {
               camera.up.z);
     // draw_axes();
     for (Object *they : objects) they->draw();
-    // for (LightSource *light : light_sources) light->draw();
+    for (LightSource *light : light_sources) light->draw();
     glutSwapBuffers();
 }
 
@@ -387,9 +395,11 @@ int main(int argc, char **argv) {
     glutIdleFunc(idle);
     init();
 
+    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+    glutCloseFunc(free_memory);
+
     glutMainLoop();
 
-    free_memory();
 
     return 0;
 }
