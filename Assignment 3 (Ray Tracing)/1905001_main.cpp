@@ -243,7 +243,7 @@ void load_data(const std::string &filename) {
     // The Floor
     Object *floor = new Floor(1000, 20);
     floor->set_coefficients(0.4, 0.2, 0.2, 0.2);
-    floor->set_shine(5);
+    floor->set_shine(1);
     objects.push_back(floor);
 
     // Point Light Sources
@@ -299,7 +299,7 @@ void display() {
               camera.pos.z + camera.look.z, camera.up.x, camera.up.y,
               camera.up.z);
     // draw_axes();
-    // for (Object *they : objects) they->draw();
+    for (Object *they : objects) they->draw();
     // for (LightSource *light : light_sources) light->draw();
     glutSwapBuffers();
 }
