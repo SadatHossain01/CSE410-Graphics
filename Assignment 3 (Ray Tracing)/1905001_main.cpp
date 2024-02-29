@@ -13,12 +13,12 @@ bool use_multithreading = true;
 unsigned int num_threads = std::thread::hardware_concurrency();
 
 int reflection_depth;
-int window_width = 768, window_height = 768;
 int image_width, image_height;
 double view_angle = 80;  // in degrees
+double far_plane_distance = 500.0;
 int captured_images;
 
-Camera camera(Vector(125, 125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
+Camera camera(Vector(125, -125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
 std::vector<Object *> objects;
 std::vector<LightSource *> light_sources;
 std::vector<LightSource *> augmented_light_sources;
@@ -43,7 +43,7 @@ void init() {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    gluPerspective(view_angle, (double)window_width / window_height, 1, 1000.0);
+    gluPerspective(view_angle, 1.0, 1.0, far_plane_distance);
 }
 
 void draw_axes() {
@@ -69,13 +69,14 @@ void capture() {
     image.set_all_channels(0, 0, 0);
 
     // plane_distance is the distance from the camera to the image plane
-    double plane_distance =
-        (window_height / 2.0) / tan(view_angle * PI / 360.0);
+    double window_height = 2 * tan(view_angle * PI / 360.0) * 1.0;
+    double window_width = window_height;
+    double plane_distance = 1.0;
     Vector top_left = camera.pos + plane_distance * camera.look -
                       (window_width / 2.0) * camera.right +
                       (window_height / 2.0) * camera.up;
-    double du = window_width / (double)image_width;
-    double dv = window_height / (double)image_height;
+    double du = window_width / image_width;
+    double dv = window_height / image_height;
 
     // Choose middle of the grid cell
     top_left += 0.5 * du * camera.right - 0.5 * dv * camera.up;
@@ -88,7 +89,7 @@ void capture() {
                     top_left + i * du * camera.right - j * dv * camera.up;
 
                 // Cast ray from eye to pixel
-                Ray ray(camera.pos, cur_pixel - camera.pos);
+                Ray ray(cur_pixel, cur_pixel - camera.pos);
 
                 int nearest_idx = -1;
                 double t_min = 1e9;
@@ -102,6 +103,8 @@ void capture() {
                 }
 
                 if (nearest_idx == -1) continue;
+                double dist = camera.look.dot(t_min * ray.dir);
+                if (dist > far_plane_distance) continue;
                 Color color(0, 0, 0);
                 objects[nearest_idx]->shade(ray, color, reflection_depth);
                 color.clamp();
@@ -126,12 +129,15 @@ void capture() {
         render_segment(0, image_width);
     }
 
-    image.save_image("Output_" + std::to_string(10 + ++captured_images) +
-                     ".bmp");
+    std::string output_file =
+        "Output_1" + std::to_string(++captured_images) + ".bmp";
+
+    image.save_image(output_file);
     double time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                               std::chrono::steady_clock::now() - start)
                               .count();
-    printf("Image captured in %.5lf seconds\n", time_elapsed / 1000);
+    std::cout << "Image captured to " << output_file << " in "
+              << time_elapsed / 1000 << " seconds" << std::endl;
 }
 
 void free_memory() {
@@ -369,7 +375,7 @@ int main(int argc, char **argv) {
     else input_file = argv[1];
 
     glutInit(&argc, argv);
-    glutInitWindowSize(window_width, window_height);
+    glutInitWindowSize(768, 768);
     glutInitWindowPosition(100, 100);
     glEnable(GLUT_MULTISAMPLE);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
