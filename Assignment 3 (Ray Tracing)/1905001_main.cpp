@@ -19,8 +19,7 @@ double view_angle = 80;  // in degrees
 double far_plane_distance = 500.0;
 int captured_images;
 
-Camera camera(Vector(-125, -125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2,
-              0.5);
+Camera camera(Vector(125, -125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2, 0.5);
 std::vector<Object *> objects;
 std::vector<LightSource *> light_sources;
 
@@ -70,9 +69,9 @@ void capture() {
     image.set_all_channels(0, 0, 0);
 
     // plane_distance is the distance from the camera to the image plane
-    double window_height = 2 * tan(view_angle * PI / 360.0) * 1.0;
-    double window_width = window_height;
     double plane_distance = 1.0;
+    double window_height = 2 * tan(view_angle * PI / 360.0) * plane_distance;
+    double window_width = window_height;
     Vector top_left = camera.pos + plane_distance * camera.look -
                       (window_width / 2.0) * camera.right +
                       (window_height / 2.0) * camera.up;
@@ -142,7 +141,6 @@ void capture() {
 }
 
 void free_memory() {
-    std::cout << "Freeing memory..." << std::endl;
     for (Object *object : objects) delete object;
     objects.clear();
 

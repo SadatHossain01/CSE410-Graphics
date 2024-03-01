@@ -19,9 +19,11 @@ class Floor;
 struct LightSource;
 struct PointLight;
 struct SpotLight;
+struct Photon;
+struct PhotonMap;
 
 const double PI = 2 * acos(0.0);
-const double EPS = 1e-8;
+const double EPS = 1e-6;
 
 extern std::vector<Object*> objects;
 extern std::vector<LightSource*> light_sources;
@@ -125,10 +127,10 @@ class Object {
 
    public:
     Object(const Vector& ref = Vector(0, 0, 0));
-    virtual void draw() = 0;
+    virtual void draw() const = 0;
     virtual Vector get_normal(const Vector& point) const = 0;
     virtual Color get_color_at(const Vector& point) const;
-    virtual void shade(const Ray& ray, Color& color, int level);
+    virtual void shade(const Ray& ray, Color& color, int level) const;
     virtual double find_ray_intersection(Ray ray) const = 0;
     void set_color(double r, double g, double b);
     void set_shine(int shine);
@@ -140,12 +142,10 @@ class Object {
 };
 
 class Floor : public Object {
-   private:
-    double floor_width, tile_width;
-
    public:
+    double floor_width, tile_width;
     Floor(double floor_width, double tile_width);
-    void draw() override;
+    void draw() const override;
     Vector get_normal(const Vector& point) const override;
     Color get_color_at(const Vector& pt) const override;
     double find_ray_intersection(Ray ray) const override;
@@ -153,24 +153,20 @@ class Floor : public Object {
 };
 
 class Sphere : public Object {
-   protected:
-    double radius;
-
    public:
+    double radius;
     Sphere(const Vector& center, double radius);
-    void draw() override;
+    void draw() const override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(Ray ray) const override;
     void print() const override;
 };
 
 class Triangle : public Object {
-   private:
-    Vector a, b, c;
-
    public:
+    Vector a, b, c;
     Triangle(const Vector& a, const Vector& b, const Vector& c);
-    void draw() override;
+    void draw() const override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(Ray ray) const override;
     void print() const override;
@@ -178,29 +174,25 @@ class Triangle : public Object {
 
 class GeneralQuadraticSurface : public Object {
     // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fzx + Gx + Hy + Iz + J = 0
-   private:
+   public:
     double A, B, C, D, E, F, G, H, I, J;
     double length, width, height;
-
-   public:
     GeneralQuadraticSurface(double A, double B, double C, double D, double E,
                             double F, double G, double H, double I, double J,
                             const Vector& ref, double l, double w, double h);
-    void draw() override;
+    void draw() const override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(Ray ray) const override;
     void print() const override;
 };
 
 class Prism : public Object {
-   private:
-    Vector a, b, c, d, e, f;
-
    public:
+    Vector a, b, c, d, e, f;
     Prism(const Vector& a, const Vector& b, const Vector& c, const Vector& d,
           const Vector& e, const Vector& f);
-    void draw() override;
-    void shade(const Ray& ray, Color& color, int level) override;
+    void draw() const override;
+    void shade(const Ray& ray, Color& color, int level) const override;
     Vector get_normal(const Vector& point) const override;
     double find_ray_intersection(Ray ray) const override;
     void print() const override;
@@ -209,27 +201,44 @@ class Prism : public Object {
 struct LightSource {
    public:
     Color color;
-    Vector light_position;  // position of the light source
+    Vector light_position;
     enum LightType { POINT, SPOT } type;
     LightSource(const Vector& pos, double r, double g, double b,
                 LightType type);
-    virtual void draw() = 0;
+    virtual void draw() const = 0;
     virtual ~LightSource();
 };
 
 struct PointLight : public LightSource {
    public:
     PointLight(const Vector& pos, double r, double g, double b);
-    void draw() override;
+    void draw() const override;
 };
 
 struct SpotLight : public LightSource {
    public:
-    Vector light_direction;  // direction of the light source
-    double cutoff_angle;     // in degrees
+    Vector light_direction;
+    double cutoff_angle;  // in degrees
     SpotLight(const Vector& pos, double r, double g, double b,
               const Vector& dir, double angle);
-    void draw() override;
+    void draw() const override;
+};
+
+struct Photon {
+   public:
+    Vector pos, dir;
+    Color color;
+    Photon(const Vector& pos, const Vector& dir, const Color& color);
+};
+
+struct PhotonMap {
+   public:
+    std::vector<Photon> photons;
+    std::mutex mutex;
+    void add_photon(const Photon& photon);
+    std::vector<Photon> get_photons_in_range(const Vector& pos, double radius,
+                                             bool threaded) const;
+    Color gather_photons(const Vector& pos, double radius, bool threaded) const;
 };
 
 #endif

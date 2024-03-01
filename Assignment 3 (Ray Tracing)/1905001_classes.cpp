@@ -275,7 +275,7 @@ Vector Object::get_reflection(const Vector& normal,
 }
 
 int Object::get_next_reflection_object(Ray reflected_ray) const {
-    // returns the index of the object that the reflected ray intersects with
+    // returns the index of the nearest object that the reflected ray intersects
     int nearest_idx = -1;
     double t_min_reflection = 1e9;
 
@@ -305,30 +305,26 @@ void Object::set_refractive_indices(double r, double g, double b) {
     blue_refractive_index = b;
 }
 
-void Object::shade(const Ray& ray, Color& color, int level) {
+void Object::shade(const Ray& ray, Color& color, int level) const {
     double t_intersect = find_ray_intersection(ray);
     if (level == 0 || t_intersect < 0) return;
 
     Vector intersection_point = ray.origin + ray.dir * t_intersect;
-    Color local_color = get_color_at(intersection_point);
+    Color object_local_color = get_color_at(intersection_point);
 
     // Ambient Component
-    color = local_color * phong_coefficients.ambient;
+    color = object_local_color * phong_coefficients.ambient;
 
     // Normal at intersection point
     Vector surface_normal = get_normal(intersection_point);
-    if (ray.dir.dot(surface_normal) > 0)
-        surface_normal = -surface_normal;  // mainly for triangle, floor and
-                                           // general quadratic surface
+    if (ray.dir.dot(surface_normal) > 0) surface_normal = -surface_normal;
 
+    // Both types of light sources
     for (LightSource* ls : light_sources) {
-        Ray light_ray(
-            ls->light_position,
-            intersection_point -
-                ls->light_position);  // In Lambert's cosine law, the light ray
-                                      // is from the intersection point to the
-                                      // light source
+        Ray light_ray(ls->light_position,
+                      intersection_point - ls->light_position);
 
+        double beta;  // for spot light intensity
         if (ls->type == LightSource::SPOT) {
             // Continue with spot light unless the ray cast from light_position
             // to intersection_point exceeds the cutoff angle
@@ -337,14 +333,15 @@ void Object::shade(const Ray& ray, Color& color, int level) {
             double angle = acos(dot / (light_ray.dir.norm() *
                                        sls->light_direction.norm())) *
                            180.0 / PI;
+            beta = fabs(angle * PI / 180);
             if (fabs(angle) >= sls->cutoff_angle) continue;
         }
 
         // Check if this ray is obscured by any other object
-        // that is, if this ray reaches any other object before the current one
+        // i.e. if this light ray reaches any other object before the current
+        // one
         double t_cur = (intersection_point - ls->light_position).norm();
-        if (t_cur < EPS)
-            continue;  // light source is at the intersection point or in front
+        if (t_cur < EPS) continue;  // light source is at the intersection point
 
         bool obscured = false;
         for (Object* obj : objects) {
@@ -356,14 +353,17 @@ void Object::shade(const Ray& ray, Color& color, int level) {
         }
         if (obscured) continue;
 
-        // So, the light ray is not obscured by any other object
+        // The light ray is not obscured by any other object
 
         // Diffuse Component
         // Calculate Lambert value using the surface normal and light ray
         double lambert_value =
             std::max(0.0, surface_normal.dot(-light_ray.dir));
+
+        double epsilon = 0.001;
         color += ls->color * phong_coefficients.diffuse * lambert_value *
-                 local_color;
+                 object_local_color *
+                 (ls->type == LightSource::SPOT ? pow(cos(beta), epsilon) : 1);
 
         // Specular Component
         // Find reflected ray for the light ray
@@ -372,18 +372,19 @@ void Object::shade(const Ray& ray, Color& color, int level) {
         // Calculate Phong value using the reflected ray and the view ray
         double phong_value = std::max(0.0, reflected_ray.dir.dot(-ray.dir));
         color += ls->color * phong_coefficients.specular *
-                 pow(phong_value, phong_coefficients.shine) * local_color;
+                 pow(phong_value, phong_coefficients.shine) *
+                 object_local_color *
+                 (ls->type == LightSource::SPOT ? pow(cos(beta), epsilon) : 1);
     }
 
     if (level == 0) return;
 
     // Recursive Reflection
-    Ray reflected_ray(
-        intersection_point,
-        get_reflection(surface_normal, ray.dir));  // Reflected Ray
+    Ray reflected_ray(intersection_point,
+                      get_reflection(surface_normal, ray.dir));
 
     reflected_ray.origin +=
-        reflected_ray.dir * EPS;                   // To avoid self-reflection
+        reflected_ray.dir * EPS;  // To avoid self-reflection
 
     int next_reflection_object_idx = get_next_reflection_object(reflected_ray);
     if (next_reflection_object_idx == -1) return;
@@ -406,7 +407,7 @@ Floor::Floor(double floor_width, double tile_width)
       floor_width(floor_width),
       tile_width(tile_width) {}
 
-void Floor::draw() {
+void Floor::draw() const {
     double cur_x = -floor_width / 2.0;
     double y_start = -floor_width / 2.0;
     int tile_count = floor_width / tile_width;
@@ -470,7 +471,7 @@ Vector Floor::get_normal(const Vector& point) const { return Vector(0, 0, 1); }
 Sphere::Sphere(const Vector& center, double radius)
     : Object(center), radius(radius) {}
 
-void Sphere::draw() {
+void Sphere::draw() const {
     glColor3f(color.r, color.g, color.b);
     glPushMatrix();
     glTranslatef(reference_point.x, reference_point.y, reference_point.z);
@@ -513,7 +514,7 @@ void Sphere::print() const {
 Triangle::Triangle(const Vector& a, const Vector& b, const Vector& c)
     : a(a), b(b), c(c) {}
 
-void Triangle::draw() {
+void Triangle::draw() const {
     glColor3f(color.r, color.g, color.b);
     glBegin(GL_TRIANGLES);
     {
@@ -550,8 +551,8 @@ double Triangle::find_ray_intersection(Ray ray) const {
     double A_matrix[3][3] = {{a.x - b.x, a.x - c.x, ray.dir.x},
                              {a.y - b.y, a.y - c.y, ray.dir.y},
                              {a.z - b.z, a.z - c.z, ray.dir.z}};
-    double A_det = determinant(A_matrix);
 
+    double A_det = determinant(A_matrix);
     double beta = determinant(beta_matrix) / A_det;
     double gamma = determinant(gamma_matrix) / A_det;
     double t = determinant(t_matrix) / A_det;
@@ -592,7 +593,7 @@ GeneralQuadraticSurface::GeneralQuadraticSurface(double A, double B, double C,
       width(w),
       height(h) {}
 
-void GeneralQuadraticSurface::draw() {}
+void GeneralQuadraticSurface::draw() const {}
 
 double GeneralQuadraticSurface::find_ray_intersection(Ray ray) const {
     /*
@@ -673,7 +674,7 @@ Prism::Prism(const Vector& a, const Vector& b, const Vector& c, const Vector& d,
              const Vector& e, const Vector& f)
     : a(a), b(b), c(c), d(d), e(e), f(f) {}
 
-void Prism::draw() {
+void Prism::draw() const {
     const double EPS = 0.01;
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -766,7 +767,7 @@ Vector Prism::get_normal(const Vector& point) const {
     throw std::invalid_argument("Point is not on the prism");
 }
 
-void Prism::shade(const Ray& ray, Color& color, int level) {
+void Prism::shade(const Ray& ray, Color& color, int level) const {
     double t_intersect = find_ray_intersection(ray);
     if (level == 0 || t_intersect < 0) return;
 
@@ -838,50 +839,21 @@ void Prism::shade(const Ray& ray, Color& color, int level) {
 
     if (level == 0) return;
 
-    // Prism
-    double k_t =
-        0.3;  // amount of light allowed to go through, later change this
-
-    // Reflection
+    // Recursive Reflection
     Ray reflected_ray(
         intersection_point,
         get_reflection(surface_normal, ray.dir));  // Reflected Ray
+
+    reflected_ray.origin +=
+        reflected_ray.dir * EPS;                   // To avoid self-reflection
+
     int next_reflection_object_idx = get_next_reflection_object(reflected_ray);
-    if (next_reflection_object_idx != -1) {
-        Color reflected_color(0, 0, 0);
-        objects[next_reflection_object_idx]->shade(reflected_ray,
-                                                   reflected_color, level - 1);
-        color += reflected_color * (1 - k_t);
-    }
+    if (next_reflection_object_idx == -1) return;
 
-    // Refraction
-    double dot = ray.dir.dot(surface_normal);
-    if (dot < 0) {
-        // going into medium
-
-        Ray refracted_ray(intersection_point,
-                          get_refraction(surface_normal, ray.dir, 1, 1.5));
-        int next_refraction_object_idx =
-            get_next_reflection_object(refracted_ray);
-        if (next_refraction_object_idx != -1) {
-            Color refracted_color(0, 0, 0);
-            objects[next_refraction_object_idx]->shade(
-                refracted_ray, refracted_color, level - 1);
-            color += refracted_color * k_t;
-        }
-    } else if (dot > 0) {
-        // coming out of medium
-        Ray refracted_ray(intersection_point,
-                          get_refraction(-surface_normal, ray.dir, 1.5, 1));
-        int next_refraction_object_idx =
-            get_next_reflection_object(refracted_ray);
-        if (next_refraction_object_idx != -1) {
-            Color refracted_color(0, 0, 0);
-            objects[next_refraction_object_idx]->shade(
-                refracted_ray, refracted_color, level - 1);
-            color += refracted_color * k_t;
-        }
-    }
+    Color reflected_color(0, 0, 0);
+    objects[next_reflection_object_idx]->shade(reflected_ray, reflected_color,
+                                               level - 1);
+    color += reflected_color * phong_coefficients.reflection;
     return;
 }
 
@@ -916,7 +888,7 @@ LightSource::~LightSource() {}
 PointLight::PointLight(const Vector& pos, double r, double g, double b)
     : LightSource(pos, r, g, b, POINT) {}
 
-void PointLight::draw() {
+void PointLight::draw() const {
     glColor3f(1, 1, 0);
     glPushMatrix();
     glTranslatef(light_position.x, light_position.y, light_position.z);
@@ -934,10 +906,69 @@ SpotLight::SpotLight(const Vector& pos, double r, double g, double b,
     light_direction = dir.normalize();
 }
 
-void SpotLight::draw() {
+void SpotLight::draw() const {
     glColor3f(0, 1, 1);
     glPushMatrix();
     glTranslatef(light_position.x, light_position.y, light_position.z);
     glutSolidSphere(2, 50, 50);
     glPopMatrix();
+}
+
+// Photon
+Photon::Photon(const Vector& pos, const Vector& dir, const Color& color)
+    : pos(pos), dir(dir), color(color) {}
+
+// PhotonMap
+void PhotonMap::add_photon(const Photon& photon) { photons.push_back(photon); }
+
+std::vector<Photon> PhotonMap::get_photons_in_range(
+    const Vector& pos, double radius, bool use_multithreading) const {
+    std::vector<Photon> result;
+
+    if (use_multithreading) {
+        unsigned num_threads = std::thread::hardware_concurrency();
+        std::vector<std::thread> threads;
+        std::vector<std::vector<Photon>> partial_results(num_threads);
+
+        for (unsigned i = 0; i < num_threads; ++i) {
+            threads.emplace_back([&, i]() {
+                for (size_t j = i * photons.size() / num_threads;
+                     j < (i + 1) * photons.size() / num_threads; ++j) {
+                    if ((photons[j].pos - pos).norm() <= radius) {
+                        partial_results[i].push_back(photons[j]);
+                    }
+                }
+            });
+        }
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        for (const auto& partial_result : partial_results) {
+            result.insert(result.end(), partial_result.begin(),
+                          partial_result.end());
+        }
+    } else {
+        for (const auto& photon : photons) {
+            if ((photon.pos - pos).norm() <= radius) {
+                result.push_back(photon);
+            }
+        }
+    }
+
+    return result;
+}
+
+// Gathers light from photons within a specified radius from a position
+Color PhotonMap::gather_photons(const Vector& pos, double radius,
+                                bool use_multithreading) const {
+    Color result(0, 0, 0);
+    for (const auto& photon : photons) {
+        if ((photon.pos - pos).norm() <= radius) {
+            double weight = 1.0 / (1.0 + (photon.pos - pos).norm());
+            result += photon.color * weight;
+        }
+    }
+    return result;
 }
