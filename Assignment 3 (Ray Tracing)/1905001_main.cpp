@@ -23,7 +23,6 @@ Camera camera(Vector(-125, -125, 125), Vector(0, 0, 0), Vector(0, 0, 1), 2,
               0.5);
 std::vector<Object *> objects;
 std::vector<LightSource *> light_sources;
-std::vector<LightSource *> augmented_light_sources;
 
 // Function Declarations
 void init();
@@ -149,9 +148,6 @@ void free_memory() {
 
     for (LightSource *light : light_sources) delete light;
     light_sources.clear();
-
-    for (LightSource *light : augmented_light_sources) delete light;
-    augmented_light_sources.clear();
 }
 
 void load_data(const std::string &filename) {
@@ -265,9 +261,6 @@ void load_data(const std::string &filename) {
         Vector position(x, y, z);
         LightSource *pl = new PointLight(position, r, g, b);
         light_sources.push_back(pl);
-        augmented_light_sources.push_back(new PointLight(position, r, 0, 0));
-        augmented_light_sources.push_back(new PointLight(position, 0, g, 0));
-        augmented_light_sources.push_back(new PointLight(position, 0, 0, b));
     }
 
     // Spot Light Sources
@@ -286,12 +279,6 @@ void load_data(const std::string &filename) {
         Vector direction(direction_x, direction_y, direction_z);
         LightSource *sl = new SpotLight(position, r, g, b, direction, angle);
         light_sources.push_back(sl);
-        augmented_light_sources.push_back(
-            new SpotLight(position, r, 0, 0, direction, angle));
-        augmented_light_sources.push_back(
-            new SpotLight(position, 0, g, 0, direction, angle));
-        augmented_light_sources.push_back(
-            new SpotLight(position, 0, 0, b, direction, angle));
     }
 
     file.close();
@@ -308,7 +295,7 @@ void display() {
               camera.up.z);
     // draw_axes();
     for (Object *they : objects) they->draw();
-    for (LightSource *light : light_sources) light->draw();
+    // for (LightSource *light : light_sources) light->draw();
     glutSwapBuffers();
 }
 

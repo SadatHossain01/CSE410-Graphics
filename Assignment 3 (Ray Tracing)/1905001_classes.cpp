@@ -782,7 +782,7 @@ void Prism::shade(const Ray& ray, Color& color, int level) {
         surface_normal = -surface_normal;  // mainly for triangle, floor and
                                            // general quadratic surface
 
-    for (LightSource* ls : augmented_light_sources) {
+    for (LightSource* ls : light_sources) {
         Ray light_ray(
             ls->light_position,
             intersection_point -

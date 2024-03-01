@@ -25,7 +25,6 @@ const double EPS = 1e-8;
 
 extern std::vector<Object*> objects;
 extern std::vector<LightSource*> light_sources;
-extern std::vector<LightSource*> augmented_light_sources;
 
 struct Color {
    public:
