@@ -360,6 +360,8 @@ void Object::shade(const Ray& ray, Color& color, int level) const {
         double lambert_value =
             std::max(0.0, surface_normal.dot(-light_ray.dir));
 
+        if (lambert_value < EPS) continue;
+
         double epsilon = 2;
         color += ls->color * phong_coefficients.diffuse * lambert_value *
                  object_local_color *
