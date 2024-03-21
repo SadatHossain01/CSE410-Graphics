@@ -19,8 +19,6 @@ class Floor;
 struct LightSource;
 struct PointLight;
 struct SpotLight;
-struct Photon;
-struct PhotonMap;
 
 const double PI = 2 * acos(0.0);
 const double EPS = 1e-6;
@@ -222,23 +220,6 @@ struct SpotLight : public LightSource {
     SpotLight(const Vector& pos, double r, double g, double b,
               const Vector& dir, double angle);
     void draw() const override;
-};
-
-struct Photon {
-   public:
-    Vector pos, dir;
-    Color color;
-    Photon(const Vector& pos, const Vector& dir, const Color& color);
-};
-
-struct PhotonMap {
-   public:
-    std::vector<Photon> photons;
-    std::mutex mutex;
-    void add_photon(const Photon& photon);
-    std::vector<Photon> get_photons_in_range(const Vector& pos, double radius,
-                                             bool threaded) const;
-    Color gather_photons(const Vector& pos, double radius, bool threaded) const;
 };
 
 #endif
